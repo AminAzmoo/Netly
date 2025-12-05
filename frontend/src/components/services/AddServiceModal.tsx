@@ -27,6 +27,7 @@ export default function AddServiceModal({ isOpen, onClose, onSuccess, nodes, tun
   const [protocol, setProtocol] = useState<'vless-reality' | 'hysteria2' | 'wireguard' | 'openconnect' | 'l2tp-ipsec'>('vless-reality')
   const [bindType, setBindType] = useState<'direct-node' | 'via-tunnel'>('direct-node')
   const [targetNodeId, setTargetNodeId] = useState('')
+  const [entryNodeId, setEntryNodeId] = useState('')
   const [tunnelId, setTunnelId] = useState('')
   const [publicPort, setPublicPort] = useState('443')
   const [enableWarpSanitizer, setEnableWarpSanitizer] = useState(false)
@@ -37,6 +38,7 @@ export default function AddServiceModal({ isOpen, onClose, onSuccess, nodes, tun
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const entryNodes = nodes.filter(n => n.role === 'entry')
+  const exitNodes = nodes.filter(n => n.role === 'exit')
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -45,10 +47,12 @@ export default function AddServiceModal({ isOpen, onClose, onSuccess, nodes, tun
     if (!clientConfigTemplate.trim()) newErrors.clientConfigTemplate = 'Client config template is required'
     
     if (bindType === 'direct-node' && !targetNodeId) {
-      newErrors.targetNodeId = 'Target node is required'
+      newErrors.targetNodeId = 'Entry node is required'
     }
-    if (bindType === 'via-tunnel' && !tunnelId) {
-      newErrors.tunnelId = 'Tunnel is required'
+    if (bindType === 'via-tunnel') {
+      if (!entryNodeId) newErrors.entryNodeId = 'Entry node is required'
+      if (!targetNodeId) newErrors.targetNodeId = 'Target node is required'
+      if (!tunnelId) newErrors.tunnelId = 'Tunnel is required'
     }
     
     const portNum = parseInt(publicPort)
@@ -71,13 +75,15 @@ export default function AddServiceModal({ isOpen, onClose, onSuccess, nodes, tun
       const payload: any = {
         name,
         protocol,
-        node_id: bindType === 'direct-node' ? parseInt(targetNodeId) : parseInt(tunnelId),
+        node_id: bindType === 'direct-node' ? parseInt(targetNodeId) : parseInt(entryNodeId),
         listen_port: parseInt(publicPort),
         routing_mode: bindType === 'direct-node' ? 'direct' : 'tunnel',
         config: {
           clientConfigTemplate,
           enableWarpSanitizer,
           notes: notes.trim() || undefined,
+          entry_node_id: bindType === 'direct-node' ? parseInt(targetNodeId) : parseInt(entryNodeId),
+          target_node_id: bindType === 'via-tunnel' ? parseInt(targetNodeId) : undefined,
         },
       }
 
@@ -88,6 +94,7 @@ export default function AddServiceModal({ isOpen, onClose, onSuccess, nodes, tun
       setProtocol('vless-reality')
       setBindType('direct-node')
       setTargetNodeId('')
+      setEntryNodeId('')
       setTunnelId('')
       setPublicPort('443')
       setEnableWarpSanitizer(false)
@@ -179,14 +186,14 @@ export default function AddServiceModal({ isOpen, onClose, onSuccess, nodes, tun
 
             {bindType === 'direct-node' && (
               <div className="md:col-span-2">
-                <label className="settings-label">Target Node *</label>
+                <label className="settings-label">Entry Node *</label>
                 <select
                   value={targetNodeId}
                   onChange={(e) => setTargetNodeId(e.target.value)}
                   disabled={isSubmitting}
                   className={`settings-input ${errors.targetNodeId ? 'border-red-500' : ''}`}
                 >
-                  <option value="">Select node...</option>
+                  <option value="">Select entry node...</option>
                   {entryNodes.map(node => (
                     <option key={node.id} value={node.id}>
                       {node.name} – {node.ip}
@@ -198,23 +205,61 @@ export default function AddServiceModal({ isOpen, onClose, onSuccess, nodes, tun
             )}
 
             {bindType === 'via-tunnel' && (
-              <div className="md:col-span-2">
-                <label className="settings-label">Tunnel *</label>
-                <select
-                  value={tunnelId}
-                  onChange={(e) => setTunnelId(e.target.value)}
-                  disabled={isSubmitting}
-                  className={`settings-input ${errors.tunnelId ? 'border-red-500' : ''}`}
-                >
-                  <option value="">Select tunnel...</option>
-                  {tunnels.map(tunnel => (
-                    <option key={tunnel.id} value={tunnel.id}>
-                      {tunnel.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.tunnelId && <p className="text-red-500 text-xs mt-1">{errors.tunnelId}</p>}
-              </div>
+              <>
+                <div className="md:col-span-1">
+                  <label className="settings-label">Entry Node (Source) *</label>
+                  <select
+                    value={entryNodeId}
+                    onChange={(e) => setEntryNodeId(e.target.value)}
+                    disabled={isSubmitting}
+                    className={`settings-input ${errors.entryNodeId ? 'border-red-500' : ''}`}
+                  >
+                    <option value="">Select entry node...</option>
+                    {entryNodes.map(node => (
+                      <option key={node.id} value={node.id}>
+                        {node.name} – {node.ip}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.entryNodeId && <p className="text-red-500 text-xs mt-1">{errors.entryNodeId}</p>}
+                </div>
+
+                <div className="md:col-span-1">
+                  <label className="settings-label">Target Node (Destination) *</label>
+                  <select
+                    value={targetNodeId}
+                    onChange={(e) => setTargetNodeId(e.target.value)}
+                    disabled={isSubmitting}
+                    className={`settings-input ${errors.targetNodeId ? 'border-red-500' : ''}`}
+                  >
+                    <option value="">Select target node...</option>
+                    {exitNodes.map(node => (
+                      <option key={node.id} value={node.id}>
+                        {node.name} – {node.ip}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.targetNodeId && <p className="text-red-500 text-xs mt-1">{errors.targetNodeId}</p>}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="settings-label">Tunnel *</label>
+                  <select
+                    value={tunnelId}
+                    onChange={(e) => setTunnelId(e.target.value)}
+                    disabled={isSubmitting}
+                    className={`settings-input ${errors.tunnelId ? 'border-red-500' : ''}`}
+                  >
+                    <option value="">Select tunnel...</option>
+                    {tunnels.map(tunnel => (
+                      <option key={tunnel.id} value={tunnel.id}>
+                        {tunnel.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.tunnelId && <p className="text-red-500 text-xs mt-1">{errors.tunnelId}</p>}
+                </div>
+              </>
             )}
 
             <div>

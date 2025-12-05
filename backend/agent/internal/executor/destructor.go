@@ -16,28 +16,28 @@ func PerformSelfDestruct() error {
 sleep 2
 
 echo "Stopping services..."
-systemctl stop netly-agent || true
-systemctl stop sing-box || true
+sudo systemctl stop netly-agent || true
+sudo systemctl stop sing-box || true
 # Stop all wireguard interfaces managed by us
-systemctl stop wg-quick@wg0 || true
+sudo systemctl stop wg-quick@wg0 || true
 
 echo "Cleaning network..."
-ip link delete tun-core || true
-ip link delete tun-users || true
-ip route flush table 100 || true
+sudo ip link delete tun-core || true
+sudo ip link delete tun-users || true
+sudo ip route flush table 100 || true
 # Flush Netly chains if they exist
-iptables -D FORWARD -j NETLY_FORWARD || true
-iptables -F NETLY_FORWARD || true
-iptables -X NETLY_FORWARD || true
+sudo iptables -D FORWARD -j NETLY_FORWARD || true
+sudo iptables -F NETLY_FORWARD || true
+sudo iptables -X NETLY_FORWARD || true
 
 echo "Wiping files..."
-rm -rf /etc/netly
-rm -rf /usr/local/bin/netly-agent
+sudo rm -rf /etc/netly
+sudo rm -rf /usr/local/bin/netly-agent
 
 echo "Removing service..."
-systemctl disable netly-agent || true
-rm /etc/systemd/system/netly-agent.service
-systemctl daemon-reload
+sudo systemctl disable netly-agent || true
+sudo rm /etc/systemd/system/netly-agent.service
+sudo systemctl daemon-reload
 
 echo "Self-destruct complete. Goodbye."
 `
