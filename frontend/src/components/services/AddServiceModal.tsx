@@ -164,7 +164,11 @@ export default function AddServiceModal({ isOpen, onClose, onSuccess, nodes, tun
                     type="radio"
                     value="direct-node"
                     checked={bindType === 'direct-node'}
-                    onChange={(e) => setBindType(e.target.value as 'direct-node')}
+                    onChange={(e) => {
+                      setBindType(e.target.value as 'direct-node')
+                      setTargetNodeId('')
+                      setEntryNodeId('')
+                    }}
                     disabled={isSubmitting}
                     className="accent-purple-600"
                   />
@@ -175,7 +179,11 @@ export default function AddServiceModal({ isOpen, onClose, onSuccess, nodes, tun
                     type="radio"
                     value="via-tunnel"
                     checked={bindType === 'via-tunnel'}
-                    onChange={(e) => setBindType(e.target.value as 'via-tunnel')}
+                    onChange={(e) => {
+                      setBindType(e.target.value as 'via-tunnel')
+                      setTargetNodeId('')
+                      setEntryNodeId('')
+                    }}
                     disabled={isSubmitting}
                     className="accent-purple-600"
                   />
