@@ -1,0 +1,7 @@
+# Netly Agent Configuration
+# Copy this file to /etc/netly/agent.yaml in production
+
+backend_url: "http://localhost:8081"
+node_token: "your-node-token-here"
+log_path: "./agent.log"
+heartbeat_interval: 10s
