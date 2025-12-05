@@ -107,6 +107,40 @@ func (h *NodeHandler) GetNode(c *fiber.Ctx) error {
     return c.JSON(dto.NodeToResponse(node))
 }
 
+func (h *NodeHandler) UpdateNode(c *fiber.Ctx) error {
+    id, err := strconv.ParseUint(c.Params("id"), 10, 32)
+    if err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{
+            Error: "invalid node id",
+        })
+    }
+
+    var req dto.UpdateNodeRequest
+    if err := c.BodyParser(&req); err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{
+            Error: "invalid request body",
+        })
+    }
+
+    input := ports.UpdateNodeInput{
+        Name:       req.Name,
+        SSHPort:    req.SSHPort,
+        Role:       req.Role,
+        Username:   req.Username,
+        Password:   req.Password,
+        PrivateKey: req.PrivateKey,
+    }
+
+    node, err := h.service.UpdateNode(c.Context(), uint(id), input)
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{
+            Error: err.Error(),
+        })
+    }
+
+    return c.JSON(dto.NodeToResponse(node))
+}
+
 func (h *NodeHandler) DeleteNode(c *fiber.Ctx) error {
     id, err := strconv.ParseUint(c.Params("id"), 10, 32)
     if err != nil {
