@@ -70,7 +70,9 @@ func configureIPTables(inIface, outIface string) error {
 func ensureRule(chain string, args ...string) error {
 	// Check if rule exists (-C)
 	checkArgs := append([]string{"-C", chain}, args...)
-	if err := exec.Command("iptables", checkArgs...).Run(); err == nil {
+	// Use sudo for checking rules
+	cmd := exec.Command("sudo", append([]string{"iptables"}, checkArgs...)...)
+	if err := cmd.Run(); err == nil {
 		// Rule exists
 		return nil
 	}
@@ -84,10 +86,12 @@ func ensureRule(chain string, args ...string) error {
 }
 
 func execCommand(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
+	// Prepend sudo to all commands
+	sudoArgs := append([]string{name}, args...)
+	cmd := exec.Command("sudo", sudoArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("command failed: %s %v, output: %s, error: %w", name, args, string(output), err)
+		return fmt.Errorf("command failed: sudo %s %v, output: %s, error: %w", name, args, string(output), err)
 	}
 	return nil
 }
