@@ -176,6 +176,60 @@ func (s *nodeService) GetNodeByID(ctx context.Context, id uint) (*domain.Node, e
     return s.repo.GetByID(ctx, id)
 }
 
+func (s *nodeService) UpdateNode(ctx context.Context, id uint, input ports.UpdateNodeInput) (*domain.Node, error) {
+    unlock := s.lockKeys(fmt.Sprintf("node:%d", id))
+    defer unlock()
+    
+    node, err := s.repo.GetByID(ctx, id)
+    if err != nil {
+        return nil, err
+    }
+
+    // Update fields if provided
+    if input.Name != nil {
+        node.Name = *input.Name
+    }
+    if input.SSHPort != nil {
+        node.SSHPort = *input.SSHPort
+    }
+    if input.Role != nil {
+        node.Role = *input.Role
+    }
+
+    // Update auth data if credentials provided
+    if input.Username != nil || input.Password != nil || input.PrivateKey != nil {
+        // Get current auth data
+        user, password, sshKey, err := s.GetNodeAuth(ctx, id)
+        if err != nil {
+            return nil, err
+        }
+
+        // Update with new values
+        if input.Username != nil {
+            user = *input.Username
+        }
+        if input.Password != nil {
+            password = *input.Password
+        }
+        if input.PrivateKey != nil {
+            sshKey = *input.PrivateKey
+        }
+
+        // Re-encrypt auth data
+        authData, err := s.encryptAuthData(user, password, sshKey)
+        if err != nil {
+            return nil, err
+        }
+        node.AuthData = authData
+    }
+
+    if err := s.repo.Update(ctx, node); err != nil {
+        return nil, err
+    }
+
+    return node, nil
+}
+
 func (s *nodeService) UpdateNodeStatus(ctx context.Context, id uint, status domain.NodeStatus) error {
     unlock := s.lockKeys(fmt.Sprintf("node:%d", id))
     defer unlock()
