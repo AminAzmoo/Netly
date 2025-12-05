@@ -15,6 +15,7 @@ import (
     "github.com/gofiber/fiber/v2/middleware/recover"
     "github.com/google/uuid"
     "github.com/netly/backend/internal/config"
+    "github.com/netly/backend/internal/core/services"
     "github.com/netly/backend/internal/infrastructure/db"
     "github.com/netly/backend/internal/infrastructure/logger"
     transporthttp "github.com/netly/backend/internal/transport/http"
@@ -22,7 +23,11 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load("config/config.yaml")
+	configPath := "config/config.yaml"
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		configPath = "../config/config.yaml"
+	}
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		panic("failed to load config: " + err.Error())
 	}
@@ -125,6 +130,22 @@ func main() {
 	// Validate agent binary existence
 	if err := installerService.ValidateBinaryExistence(); err != nil {
 		log.Warnf("Agent binary is missing; Node installation will fail until the binary is placed in the correct folder (bin/netly-agent, agent/netly-agent, or ../agent/netly-agent): %v", err)
+	}
+
+	// Auto-setup Cloudflare tunnel if public_url not configured
+	if cfg.Security.PublicURL == "" || cfg.Security.PublicURL == "https://YOUR-TUNNEL-URL.trycloudflare.com" {
+		log.Info("Setting up Cloudflare tunnel automatically...")
+		go func() {
+			time.Sleep(2 * time.Second)
+			tunnelService := services.NewCloudflareTunnelService(log)
+			publicURL, err := tunnelService.SetupAndStart(cfg.Server.Port)
+			if err != nil {
+				log.Warnf("Failed to setup Cloudflare tunnel: %v", err)
+			} else {
+				cfg.Security.PublicURL = publicURL
+				log.Infof("✅ Cloudflare tunnel ready: %s", publicURL)
+			}
+		}()
 	}
 
 	log.Infof("Public URL for agents: %s", cfg.Security.PublicURL)

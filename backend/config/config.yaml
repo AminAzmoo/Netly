@@ -27,7 +27,12 @@ logger:
 security:
   encryption_key: "change-me-in-production-32chars!"
   geoip_token: "5b089ad5d2a74086acffda1d70a30a57"
-  public_url: "https://YOUR-TUNNEL-URL.trycloudflare.com"
+  public_url: "https://netly.example.com"
+
+general:
+  system_name: "Netly-Core-01"
+  admin_email: "admin@netly.io"
+  environment: "Production"
 
 ipam:
   ipv4_cidr: "10.100.0.0/16"
@@ -49,4 +54,5 @@ auth:
   allowed_origins:
     - "http://localhost:3000"
     - "http://localhost:5173"
+    - "http://localhost:5174"
     - "https://panel.netly.local"

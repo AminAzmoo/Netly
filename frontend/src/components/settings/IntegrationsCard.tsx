@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import CardShell from '../common/CardShell'
 import VerticalProcessTimeline from '../common/VerticalProcessTimeline'
 import { ProcessStep } from '../../types'
+import { api } from '../../lib/api'
 
 interface IntegrationField {
   key: string
@@ -58,7 +60,7 @@ const INITIAL_INTEGRATIONS: IntegrationState[] = [
     processing: false,
     status: 'Disabled',
     fields: [
-      { key: 'api_token', label: 'API Token', value: '', type: 'password' },
+      { key: 'token', label: 'API Token', value: '', type: 'password' },
       { key: 'account_id', label: 'Account ID', value: '' },
       { key: 'zone_id', label: 'Zone ID', value: '' },
       { key: 'domain', label: 'Domain Pattern', value: '*.example.com' },
@@ -84,20 +86,81 @@ const INITIAL_INTEGRATIONS: IntegrationState[] = [
 ]
 
 export default function IntegrationsCard() {
+  const queryClient = useQueryClient()
   const [integrations, setIntegrations] = useState<IntegrationState[]>(INITIAL_INTEGRATIONS)
+  
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: () => api.getSettings()
+  })
+  
+  const updateSettingsMutation = useMutation({
+    mutationFn: (data: Record<string, string>) => api.updateSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+    }
+  })
+  
+  useEffect(() => {
+    if (settings) {
+      setIntegrations(prev => prev.map(int => {
+        if (int.id === 'cloudflare') {
+          const isConfigured = !!settings.cloudflare_token
+          const isEnabled = settings.cloudflare_enabled === 'true'
+          return {
+            ...int,
+            fields: int.fields.map(field => ({
+              ...field,
+              value: settings[`cloudflare_${field.key}`] || field.value
+            })),
+            configured: isConfigured,
+            enabled: isEnabled,
+            status: isEnabled 
+              ? (isConfigured ? 'Active' : 'Enabled, not configured') 
+              : (isConfigured ? 'Configured' : 'Not configured')
+          }
+        }
+        return int
+      }))
+    }
+  }, [settings])
 
-  const toggleIntegration = (id: string) => {
+  const toggleIntegration = async (id: string) => {
+    const integration = integrations.find(i => i.id === id)
+    if (!integration) return
+    
+    const newEnabled = !integration.enabled
+    
+    // Update UI immediately
     setIntegrations(prev => prev.map(int => {
       if (int.id !== id) return int
-      const newEnabled = !int.enabled
       return {
         ...int,
         enabled: newEnabled,
         status: newEnabled 
           ? (int.configured ? 'Active' : 'Enabled, not configured') 
-          : 'Disabled'
+          : (int.configured ? 'Configured' : 'Not configured')
       }
     }))
+    
+    // Save to backend
+    if (id === 'cloudflare') {
+      try {
+        await updateSettingsMutation.mutateAsync({
+          cloudflare_enabled: newEnabled.toString()
+        })
+      } catch (error) {
+        // Revert on error
+        setIntegrations(prev => prev.map(int => {
+          if (int.id !== id) return int
+          return {
+            ...int,
+            enabled: !newEnabled,
+            status: 'Error: Failed to update status'
+          }
+        }))
+      }
+    }
   }
 
   const toggleExpand = (id: string) => {
@@ -117,7 +180,7 @@ export default function IntegrationsCard() {
     }))
   }
 
-  const handleTestSave = (id: string) => {
+  const handleTestSave = async (id: string) => {
     const integration = integrations.find(i => i.id === id)
     if (!integration || integration.processing) return
 
@@ -132,8 +195,32 @@ export default function IntegrationsCard() {
     }))
 
     let currentStepIndex = 0
-    const runStep = () => {
+    const runStep = async () => {
       if (currentStepIndex >= INITIAL_TIMELINE_STEPS.length) {
+        // Save to backend for Cloudflare
+        if (id === 'cloudflare') {
+          try {
+            const settingsData: Record<string, string> = {}
+            integration.fields.forEach(field => {
+              settingsData[`cloudflare_${field.key}`] = field.value
+            })
+            await updateSettingsMutation.mutateAsync(settingsData)
+          } catch (error) {
+            setIntegrations(prev => prev.map(int => {
+              if (int.id !== id) return int
+              return {
+                ...int,
+                processing: false,
+                status: 'Error: Failed to save settings',
+                steps: int.steps.map((s, idx) => 
+                  idx === int.steps.length - 1 ? { ...s, state: 'error' } : s
+                )
+              }
+            }))
+            return
+          }
+        }
+        
         // Success
         setIntegrations(prev => prev.map(int => {
             if (int.id !== id) return int
@@ -163,7 +250,7 @@ export default function IntegrationsCard() {
       setTimeout(() => {
         // Error simulation (randomly fail Cloudflare if empty token)
         const currentInt = integrations.find(i => i.id === id)
-        if (id === 'cloudflare' && currentStepIndex === 2 && currentInt?.fields.find(f => f.key === 'api_token')?.value === '') {
+        if (id === 'cloudflare' && currentStepIndex === 2 && currentInt?.fields.find(f => f.key === 'token')?.value === '') {
              setIntegrations(prev => prev.map(int => {
                 if (int.id !== id) return int
                 return {
@@ -184,17 +271,7 @@ export default function IntegrationsCard() {
         if (currentStepIndex < INITIAL_TIMELINE_STEPS.length) {
             runStep()
         } else {
-            // Final completion logic repeated here for safety in timeout
-            setIntegrations(prev => prev.map(int => {
-                if (int.id !== id) return int
-                return {
-                    ...int,
-                    processing: false,
-                    configured: true,
-                    status: `${int.name}: Connected and saved just now`,
-                    steps: int.steps.map(s => ({ ...s, state: 'done' }))
-                }
-            }))
+            runStep() // Continue to final step
         }
       }, 800)
     }

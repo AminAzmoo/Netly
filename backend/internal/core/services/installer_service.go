@@ -40,9 +40,8 @@ func NewInstallerService(timelineRepo ports.TimelineRepository, log *logger.Logg
 
 func (s *installerService) ValidateBinaryExistence() error {
 	binaryPaths := []string{
-		"bin/netly-agent",
-		"agent/netly-agent",
-		"../agent/netly-agent",
+		"bin/uploads/netly-agent-amd64",
+		"bin/uploads/netly-agent-arm64",
 	}
 
 	for _, path := range binaryPaths {
@@ -213,9 +212,8 @@ func (s *installerService) installDependencies(ctx context.Context, client *remo
 
 func (s *installerService) deployAgent(ctx context.Context, client *remote.SSHClient, conn **ssh.Client, nodeID uint) error {
 	binaryPaths := []string{
-		"bin/netly-agent",
-		"agent/netly-agent",
-		"../agent/netly-agent",
+		"bin/uploads/netly-agent-amd64",
+		"bin/uploads/netly-agent-arm64",
 	}
 
 	var localFile *os.File

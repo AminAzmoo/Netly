@@ -5,6 +5,7 @@ import DeviceCard from '../components/entities/DeviceCard'
 import DevicesTable from '../components/entities/DevicesTable'
 import ViewToggle from '../components/common/ViewToggle'
 import AddDeviceModal from '../components/devices/AddDeviceModal'
+import InstallScriptModal from '../components/common/InstallScriptModal'
 import Toast from '../components/common/Toast'
 import { useToast } from '../hooks/useToast'
 import { api } from '../lib/api'
@@ -58,8 +59,19 @@ export default function DevicesPage() {
   const [processes, setProcesses] = useState<Record<string, ActiveProcess>>({})
   const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentStatus>>({})
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false)
+  const [showInstallScript, setShowInstallScript] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const intervalsRef = useRef<Record<string, number>>({})
+
+  const { data: generalSettings } = useQuery({
+    queryKey: ['generalSettings'],
+    queryFn: () => api.getGeneralSettings(),
+    retry: 1,
+  })
+
+  const scriptUrl = generalSettings?.publicUrl 
+    ? `${generalSettings.publicUrl}/install.sh`
+    : `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:8081'}/install.sh`
 
   const { data: rawDevices = [], isLoading, refetch: refetchDevices } = useQuery({
     queryKey: ['nodes'],
@@ -284,9 +296,14 @@ export default function DevicesPage() {
       title="Devices"
       subtitle="Manage and monitor all Netly nodes"
       headerRight={
-        <button className="btn-primary-glow" onClick={() => setIsAddDeviceOpen(true)}>
-          Add Device
-        </button>
+        <div className="flex gap-3">
+          <button className="btn-primary-glow" onClick={() => setShowInstallScript(true)}>
+            Install Script
+          </button>
+          <button className="btn-primary-glow" onClick={() => setIsAddDeviceOpen(true)}>
+            Add Device
+          </button>
+        </div>
       }
     >
       {/* Filters */}
@@ -365,6 +382,12 @@ export default function DevicesPage() {
         refetchDevices()
         showToast('Device added successfully', 'success')
       }}
+    />
+
+    <InstallScriptModal
+      isOpen={showInstallScript}
+      onClose={() => setShowInstallScript(false)}
+      scriptUrl={scriptUrl}
     />
 
     {deleteConfirmId && (

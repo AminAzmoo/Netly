@@ -1,15 +1,15 @@
 @echo off
-title Netly - Full Stack
-echo Starting Netly Full Stack...
-echo.
+title Netly
+cd /d "%~dp0..\backend"
 
-start "Netly Backend" cmd /k "cd /d %~dp0..\backend\bin && start.bat"
+start /b "" bin\netly-server.exe
 timeout /t 2 /nobreak >nul
 
-start "Netly Frontend" cmd /k "cd /d %~dp0..\frontend && npm run dev"
+cd ..\frontend
+start /b "" cmd /c "npm run dev"
 
+echo Backend: http://localhost:8081
+echo Frontend: http://localhost:3000
 echo.
-echo ✓ Backend: http://localhost:8081
-echo ✓ Frontend: http://localhost:3000
-echo.
-pause
+echo Press Ctrl+C to stop
+pause >nul

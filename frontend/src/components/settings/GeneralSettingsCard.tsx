@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import CardShell from '../common/CardShell'
 import { ProcessStep } from '../../types'
 import VerticalProcessTimeline from '../common/VerticalProcessTimeline'
+import { api } from '../../lib/api'
 
 const INITIAL_STEPS: ProcessStep[] = [
   { id: '1', label: 'Queued', state: 'pending' },
@@ -16,12 +18,28 @@ export default function GeneralSettingsCard() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<string | null>(null)
   const [showTimeline, setShowTimeline] = useState(false)
+  const { data: settings } = useQuery({
+    queryKey: ['generalSettings'],
+    queryFn: () => api.getGeneralSettings(),
+  })
+
   const [formData, setFormData] = useState({
-    systemName: 'Netly-Core-01',
-    adminEmail: 'admin@netly.io',
-    baseUrl: 'https://api.netly.io/v1',
+    systemName: '',
+    adminEmail: '',
+    publicUrl: '',
     environment: 'Production'
   })
+
+  useEffect(() => {
+    if (settings) {
+      setFormData({
+        systemName: settings.systemName || '',
+        adminEmail: settings.adminEmail || '',
+        publicUrl: settings.publicUrl || '',
+        environment: settings.environment || 'Production'
+      })
+    }
+  }, [settings])
   const timeoutsRef = useRef<number[]>([])
 
   useEffect(() => {
@@ -29,6 +47,13 @@ export default function GeneralSettingsCard() {
       timeoutsRef.current.forEach(clearTimeout)
     }
   }, [])
+
+  const updateMutation = useMutation({
+    mutationFn: (data: typeof formData) => api.updateGeneralSettings(data),
+    onSuccess: () => {
+      setLastUpdate('Just now')
+    },
+  })
 
   const handleSave = () => {
     if (isProcessing) return
@@ -44,8 +69,8 @@ export default function GeneralSettingsCard() {
     
     const runStep = () => {
         if (currentStepIndex >= INITIAL_STEPS.length) {
+            updateMutation.mutate(formData)
             setIsProcessing(false)
-            setLastUpdate('Just now')
             return
         }
 
@@ -62,7 +87,6 @@ export default function GeneralSettingsCard() {
             } else {
                 setSteps(prev => prev.map(s => ({ ...s, state: 'done' })))
                 setIsProcessing(false)
-                setLastUpdate('Just now')
                 timeoutsRef.current = []
             }
         }, 800) as unknown as number
@@ -100,14 +124,16 @@ export default function GeneralSettingsCard() {
                     />
                 </div>
                 <div>
-                    <label htmlFor="baseUrl" className="settings-label">Base URL</label>
+                    <label htmlFor="publicUrl" className="settings-label">Public URL</label>
                     <input 
-                        id="baseUrl"
+                        id="publicUrl"
                         type="text" 
-                        value={formData.baseUrl} 
-                        onChange={(e) => setFormData(prev => ({ ...prev, baseUrl: e.target.value }))}
-                        className="settings-input" 
+                        value={formData.publicUrl} 
+                        onChange={(e) => setFormData(prev => ({ ...prev, publicUrl: e.target.value }))}
+                        className="settings-input"
+                        placeholder="https://netly.yourdomain.com" 
                     />
+                    <p className="text-xs text-gray-500 mt-1">Used for agent installation script</p>
                 </div>
                 <div>
                     <label htmlFor="environment" className="settings-label">Environment</label>

@@ -115,6 +115,20 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
     agentHandler := handlers.NewAgentHandler(nodeService, cfg.Logger, keyManager)
     cleanupHandler := handlers.NewCleanupHandler(cleanupService, nodeService, cfg.Logger)
     installHandler := handlers.NewInstallHandler(settingService, cfg.Logger)
+    installScriptHandler := handlers.NewInstallScriptHandler(cfg.Logger)
+    generalSettingsHandler := handlers.NewGeneralSettingsHandler(cfg.Logger)
+
+	// Static file server for agent binaries
+	app.Static("/downloads", "./bin/uploads")
+
+	// Public install script route (NEW - without token)
+	app.Get("/install.sh", func(c *fiber.Ctx) error {
+		c.Set("X-Public-URL", cfg.Config.Security.PublicURL)
+		return installScriptHandler.GetInstallScript(c)
+	})
+
+	// Old install script route (with token) - kept for compatibility
+	app.Get("/api/v1/install-old.sh", installHandler.GetInstallScript)
 
 	// Web Terminal Route
 	app.Use("/ws", func(c *fiber.Ctx) error {
@@ -130,10 +144,15 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 	// API v1 routes
 	api := app.Group("/api/v1")
 
+	// General Settings routes (must be before /settings)
+	api.Get("/settings/general", httpmw.AdminAuth(cfg.Config), generalSettingsHandler.GetSettings)
+	api.Put("/settings/general", httpmw.AdminAuth(cfg.Config), generalSettingsHandler.UpdateSettings)
+
 	// Settings routes
 	settings := api.Group("/settings", httpmw.AdminAuth(cfg.Config))
 	settings.Get("/", settingHandler.GetSettings)
 	settings.Post("/", settingHandler.UpdateSettings)
+	settings.Post("/tunnel", settingHandler.UpdateTunnelSettings)
 
 	// Service routes
 	servicesGroup := api.Group("/services", httpmw.AdminAuth(cfg.Config))
@@ -150,6 +169,7 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 	nodes.Get("/:id", nodeHandler.GetNode)
 	nodes.Delete("/:id", nodeHandler.DeleteNode)
 	nodes.Post("/:id/install-agent", nodeHandler.InstallAgent)
+
 
 	// Task routes
 	tasks := api.Group("/tasks", httpmw.AdminAuth(cfg.Config))
@@ -172,14 +192,7 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 	cleanup.Post("/", cleanupHandler.CleanupNode)
 	cleanup.Post("/uninstall/:id", cleanupHandler.UninstallNode)
 
-	// Install script routes (Public)
-	app.Get("/install.sh", installHandler.GetInstallScript)
 
-	// Static file server for agent binaries
-	app.Static("/downloads", "./bin/uploads")
-
-	// Node command endpoint
-	nodes.Get("/:id/command", nodeHandler.GetNodeCommand)
 
 	// Agent routes (Internal API for agents)
 	agent := api.Group("/agent")

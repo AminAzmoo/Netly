@@ -46,16 +46,53 @@ func (h *SettingHandler) UpdateSettings(c *fiber.Ctx) error {
         })
     }
 
-    if token, ok := req["cloudflare_token"].(string); ok && token != "" {
-        h.logger.Infow("starting_cloudflare_tunnel", "token_length", len(token))
-        go func() {
-            if err := h.tunnelManager.StartTunnel(token); err != nil {
-                h.logger.Errorw("tunnel_start_failed", "error", err)
-            }
-        }()
-    }
+
 
     return c.JSON(dto.SuccessResponse{
         Message: "settings updated successfully",
+    })
+}
+
+type TunnelSettingsRequest struct {
+    CloudflareToken string `json:"cloudflare_token"`
+    PublicURL       string `json:"public_url,omitempty"`
+}
+
+func (h *SettingHandler) UpdateTunnelSettings(c *fiber.Ctx) error {
+    var req TunnelSettingsRequest
+    if err := c.BodyParser(&req); err != nil {
+        return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{
+            Error: "invalid request body",
+        })
+    }
+
+    if req.CloudflareToken == "" {
+        return c.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{
+            Error: "cloudflare_token is required",
+        })
+    }
+
+    // If public_url is provided, save it first
+    if req.PublicURL != "" {
+        settings := map[string]interface{}{"public_url": req.PublicURL}
+        if err := h.service.UpdateSettings(c.Context(), settings); err != nil {
+            h.logger.Errorw("failed to save public url", "error", err)
+            return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{
+                Error: "failed to save public url",
+            })
+        }
+        h.logger.Infow("manual public url saved", "url", req.PublicURL)
+    }
+
+    // Start tunnel with fixed URL flag
+    if err := h.tunnelManager.StartTunnelWithURL(req.CloudflareToken, req.PublicURL); err != nil {
+        h.logger.Errorw("failed to start tunnel", "error", err)
+        return c.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{
+            Error: "failed to start tunnel",
+        })
+    }
+
+    return c.JSON(dto.SuccessResponse{
+        Message: "tunnel started successfully",
     })
 }

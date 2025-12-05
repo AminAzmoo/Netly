@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Device, ProcessStep } from '../../types'
 import CardShell from '../common/CardShell'
 import StatusBadge from '../common/StatusBadge'
 import VerticalProcessTimeline from '../common/VerticalProcessTimeline'
-import { Server, Cpu, CircuitBoard, MapPin, Activity, Trash2, RefreshCw, Download } from 'lucide-react'
+import InstallCommandModal from '../InstallCommandModal'
+import { Server, Cpu, CircuitBoard, MapPin, Activity, Trash2, RefreshCw, Download, Terminal } from 'lucide-react'
 
 interface DeviceCardProps {
   device: Device
@@ -25,6 +27,7 @@ export default function DeviceCard({
   processType,
   lastCleanupAt
 }: DeviceCardProps) {
+  const [installCommandModal, setInstallCommandModal] = useState(false)
   const agentStatus = (device as any).agentStatus || 'not_installed'
   const showInstallAgent = (agentStatus === 'not_installed' || agentStatus === 'error') && device.status !== 'Online' && device.status !== 'Installing'
   const statusVariant =
@@ -54,9 +57,19 @@ export default function DeviceCard({
                   onClick={(e) => { e.stopPropagation(); onInstallAgent?.() }}
                   disabled={isProcessing}
                   className="p-2 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
-                  title="Install Agent"
+                  title="Auto Install Agent"
                 >
                   <Download size={16} className={`text-gray-400 group-hover:text-green-500 ${isProcessing && processType === 'install-agent' ? 'text-green-500' : ''}`} />
+                </button>
+              )}
+              {(agentStatus === 'error' || agentStatus === 'not_installed') && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setInstallCommandModal(true) }}
+                  disabled={isProcessing}
+                  className="p-2 hover:bg-cyan-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+                  title="Manual Install Command"
+                >
+                  <Terminal size={16} className="text-gray-400 group-hover:text-cyan-500" />
                 </button>
               )}
               <button 
@@ -153,6 +166,12 @@ export default function DeviceCard({
           />
         </div>
       )}
+      
+      <InstallCommandModal
+        isOpen={installCommandModal}
+        onClose={() => setInstallCommandModal(false)}
+        nodeId={device.id}
+      />
     </CardShell>
   )
 }

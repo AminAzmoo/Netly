@@ -16,7 +16,7 @@ class ApiClient {
     this.token = token
   }
 
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'X-Admin-Token': 'change-me-admin',
@@ -67,6 +67,10 @@ class ApiClient {
 
   async getTaskStatus(taskId: string) {
     return this.request(`/tasks/${taskId}`)
+  }
+
+  async getInstallCommand(nodeId: string) {
+    return this.request<{ command: string }>(`/nodes/${nodeId}/command`)
   }
 
   // Tunnels
@@ -130,6 +134,40 @@ class ApiClient {
   }) {
     return this.request('/cleanup', {
       method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  // Settings
+  async getSettings() {
+    return this.request<Record<string, string>>('/settings')
+  }
+
+  async updateSettings(settings: Record<string, string>) {
+    return this.request('/settings', {
+      method: 'POST',
+      body: JSON.stringify(settings),
+    })
+  }
+
+  // General Settings
+  async getGeneralSettings() {
+    return this.request<{
+      systemName: string
+      adminEmail: string
+      publicUrl: string
+      environment: string
+    }>('/settings/general')
+  }
+
+  async updateGeneralSettings(data: {
+    systemName: string
+    adminEmail: string
+    publicUrl: string
+    environment: string
+  }) {
+    return this.request('/settings/general', {
+      method: 'PUT',
       body: JSON.stringify(data),
     })
   }

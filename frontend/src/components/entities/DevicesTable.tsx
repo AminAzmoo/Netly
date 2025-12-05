@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Device, ProcessStep } from '../../types'
 import StatusBadge from '../common/StatusBadge'
 import CardShell from '../common/CardShell'
 import VerticalProcessTimeline from '../common/VerticalProcessTimeline'
-import { Download, RefreshCw, Trash2 } from 'lucide-react'
+import InstallCommandModal from '../InstallCommandModal'
+import { Download, RefreshCw, Trash2, Terminal } from 'lucide-react'
 
 interface DevicesTableProps {
   devices: Device[]
@@ -27,6 +29,7 @@ export default function DevicesTable({
   DELETE_STEPS,
   INSTALL_AGENT_STEPS
 }: DevicesTableProps) {
+  const [installCommandModal, setInstallCommandModal] = useState<{ isOpen: boolean; nodeId: string }>({ isOpen: false, nodeId: '' })
   return (
     <CardShell className="data-table-container">
       <div className="data-table-wrapper">
@@ -104,9 +107,19 @@ export default function DevicesTable({
                           onClick={() => onInstallAgent(device.id)}
                           disabled={isProcessing}
                           className="p-2 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Install Agent"
+                          title="Auto Install Agent"
                         >
                           <Download size={14} className="text-gray-400 hover:text-green-500" />
+                        </button>
+                      )}
+                      {(agentStatus === 'error' || agentStatus === 'not_installed') && (
+                        <button 
+                          onClick={() => setInstallCommandModal({ isOpen: true, nodeId: device.id })}
+                          disabled={isProcessing}
+                          className="p-2 hover:bg-cyan-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Manual Install Command"
+                        >
+                          <Terminal size={14} className="text-gray-400 hover:text-cyan-500" />
                         </button>
                       )}
                       <button 
@@ -138,6 +151,12 @@ export default function DevicesTable({
           </tbody>
         </table>
       </div>
+      
+      <InstallCommandModal
+        isOpen={installCommandModal.isOpen}
+        onClose={() => setInstallCommandModal({ isOpen: false, nodeId: '' })}
+        nodeId={installCommandModal.nodeId}
+      />
     </CardShell>
   )
 }
