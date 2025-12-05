@@ -1,40 +1,50 @@
 import { useEffect, useState } from 'react'
-import { Copy, AlertTriangle, RefreshCw } from 'lucide-react'
-import { api } from '../lib/api'
+import { AlertTriangle, Copy } from 'lucide-react'
 
 interface InstallCommandModalProps {
+  nodeId: string | null
   isOpen: boolean
   onClose: () => void
-  nodeId: string
 }
 
-export default function InstallCommandModal({ isOpen, onClose, nodeId }: InstallCommandModalProps) {
-  const [command, setCommand] = useState<string>('')
+interface CommandResponse {
+  command: string
+  api_url: string
+  token: string
+}
+
+export default function InstallCommandModal({ nodeId, isOpen, onClose }: InstallCommandModalProps) {
+  const [command, setCommand] = useState<CommandResponse | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const fetchCommand = async () => {
+  const fetchCommand = () => {
+    if (!nodeId) return
+    
     setLoading(true)
-    setError('')
-    try {
-      const response = await api.request<{ command: string }>(`/nodes/${nodeId}/command`)
-      setCommand(response.command)
-    } catch (err: any) {
-      setError(err.message === 'HTTP 503' ? 'Tunnel not ready. Please start Cloudflare Tunnel first.' : 'Failed to fetch install command')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(command)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      console.error('Failed to copy:', err)
-    }
+    setError(null)
+    
+    fetch(`http://localhost:8081/api/v1/nodes/${nodeId}/command`, {
+      headers: {
+        'X-Admin-Token': 'change-me-admin'
+      }
+    })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+        }
+        return res.json()
+      })
+      .then(data => {
+        if (data.error) {
+          setError(data.error)
+        } else {
+          setCommand(data)
+        }
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false))
   }
 
   useEffect(() => {
@@ -43,79 +53,87 @@ export default function InstallCommandModal({ isOpen, onClose, nodeId }: Install
     }
   }, [isOpen, nodeId])
 
+  const handleClose = () => {
+    setCommand(null)
+    setError(null)
+    setCopied(false)
+    onClose()
+  }
+
+  const copyToClipboard = () => {
+    if (command) {
+      navigator.clipboard.writeText(command.command)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative card-shell max-w-2xl w-full">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-cyan-400">Manual Agent Installation</h3>
-          <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            ✕
-          </button>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={handleClose} />
+      <div className="relative card-shell max-w-sm w-full">
+        <h3 className="text-lg font-bold text-white mb-3">Manual Installation</h3>
+        
+        <div className="flex items-center gap-2 p-2 bg-yellow-500/20 rounded border border-yellow-500/50 mb-3">
+          <AlertTriangle className="w-5 h-5 text-yellow-500" />
+          <p className="text-sm text-yellow-200">
+            Run this command on your server (Root access required):
+          </p>
         </div>
 
         {loading && (
           <div className="space-y-3">
-            <div className="h-4 w-3/4 rounded bg-gray-800 animate-pulse" />
-            <div className="h-20 w-full rounded bg-gray-800 animate-pulse" />
+            <div className="h-4 bg-gray-700 rounded animate-pulse" />
+            <div className="h-20 bg-gray-700 rounded animate-pulse" />
           </div>
         )}
 
         {error && (
-          <div className="space-y-4">
-            <p className="text-red-400 text-sm flex items-center gap-2">
-              <AlertTriangle size={16} />
-              {error}
-            </p>
+          <div className="p-3 bg-red-500/20 rounded-lg border border-red-500/50 mb-4">
+            <p className="text-sm text-red-200 mb-3">Error: {error}</p>
             <button 
               onClick={fetchCommand}
-              className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500 text-yellow-500 rounded-lg hover:bg-yellow-500/30 transition-colors"
+              className="px-3 py-1 bg-blue-500/20 border border-blue-500 text-blue-400 rounded hover:bg-blue-500/30 text-sm"
             >
-              <RefreshCw size={16} />
               Retry
             </button>
           </div>
         )}
 
-        {!loading && !error && command && (
+        {command && !loading && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-              <AlertTriangle size={16} className="text-yellow-500 flex-shrink-0" />
-              <p className="text-yellow-400 text-sm">
-                Run this command on your target server (Root access required)
-              </p>
+            <div>
+              <p className="text-sm font-medium mb-2 text-gray-300">Installation Command:</p>
+              <div className="relative w-full">
+                <pre className="bg-gray-900 p-2 rounded text-xs text-green-400 overflow-x-auto border border-gray-700 max-w-full break-all whitespace-pre-wrap">
+                  {command.command}
+                </pre>
+                <button 
+                  onClick={copyToClipboard}
+                  className="absolute top-2 right-2 p-1.5 bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+                  title="Copy to clipboard"
+                >
+                  <Copy size={12} className={copied ? 'text-green-500' : 'text-gray-400'} />
+                </button>
+              </div>
+              {copied && <p className="text-xs text-green-500 mt-1">Copied to clipboard!</p>}
             </div>
             
-            <div className="relative">
-              <pre className="bg-gray-800/50 border border-yellow-500/30 rounded-lg p-4 text-xs text-gray-200 font-mono overflow-x-auto">
-                {command}
-              </pre>
-              <button
-                onClick={copyToClipboard}
-                className="absolute top-2 right-2 p-2 bg-gray-700/80 hover:bg-gray-600/80 rounded-lg transition-colors"
-                title="Copy to clipboard"
-              >
-                <Copy size={14} className={copied ? 'text-green-400' : 'text-gray-400'} />
-              </button>
-              {copied && (
-                <div className="absolute top-2 right-12 px-2 py-1 bg-green-500/20 border border-green-500 text-green-400 text-xs rounded">
-                  Copied!
-                </div>
-              )}
+            <div className="grid grid-cols-2 gap-4 text-xs text-gray-400">
+              <div>
+                <span className="font-medium">API URL:</span> {command.api_url}
+              </div>
+              <div>
+                <span className="font-medium">Token:</span> {command.token}
+              </div>
             </div>
           </div>
         )}
 
-        <div className="flex justify-end mt-6">
-          <button 
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-white/5 transition-colors"
-          >
+        <div className="flex justify-end mt-4">
+          <button onClick={handleClose} className="px-4 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-white/5">
             Close
           </button>
         </div>

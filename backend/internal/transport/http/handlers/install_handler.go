@@ -118,15 +118,17 @@ func (h *InstallHandler) GetNodeCommand(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Missing node ID"})
 	}
 
-	settings, err := h.settingService.GetSettingsStruct()
-	if err != nil {
-		h.logger.Errorw("failed to get settings", "error", err)
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Internal server error"})
+	// Resolve public URL with priority: DB > Config > Request Host
+	apiURL := ""
+	if settings, err := h.settingService.GetSettingsStruct(); err == nil && settings.PublicURL != "" {
+		apiURL = settings.PublicURL
 	}
-
-	apiURL := settings.PublicURL
 	if apiURL == "" {
-		apiURL = "http://localhost:8081"
+		if configURL := c.Get("X-Public-URL"); configURL != "" {
+			apiURL = configURL
+		} else {
+			apiURL = c.BaseURL()
+		}
 	}
 
 	nodeToken := fmt.Sprintf("node-token-%s", nodeID)

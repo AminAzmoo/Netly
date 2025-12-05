@@ -69,6 +69,19 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 
 	tunnelManager := services.NewTunnelManager(settingService, cfg.Logger)
 
+	// Auto-start tunnel if token exists in DB
+	if settings, err := settingService.GetSettingsStruct(); err == nil {
+		if settings.CloudflareToken != "" {
+			go func() {
+				if settings.PublicURL != "" {
+					tunnelManager.StartTunnelWithURL(settings.CloudflareToken, settings.PublicURL)
+				} else {
+					tunnelManager.StartTunnel(settings.CloudflareToken)
+				}
+			}()
+		}
+	}
+
     installerService := services.NewInstallerService(timelineRepo, cfg.Logger, cfg.EnableTaskCorrelation, cfg.Config.Security.PublicURL)
 	taskService := services.NewTaskService()
 	factoryService := factory.NewFactoryService()
@@ -115,17 +128,13 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
     agentHandler := handlers.NewAgentHandler(nodeService, cfg.Logger, keyManager)
     cleanupHandler := handlers.NewCleanupHandler(cleanupService, nodeService, cfg.Logger)
     installHandler := handlers.NewInstallHandler(settingService, cfg.Logger)
-    installScriptHandler := handlers.NewInstallScriptHandler(cfg.Logger)
     generalSettingsHandler := handlers.NewGeneralSettingsHandler(cfg.Logger)
 
 	// Static file server for agent binaries
 	app.Static("/downloads", "./bin/uploads")
 
-	// Public install script route (NEW - without token)
-	app.Get("/install.sh", func(c *fiber.Ctx) error {
-		c.Set("X-Public-URL", cfg.Config.Security.PublicURL)
-		return installScriptHandler.GetInstallScript(c)
-	})
+	// Public install script route
+	app.Get("/install.sh", installHandler.GetInstallScript)
 
 	// Old install script route (with token) - kept for compatibility
 	app.Get("/api/v1/install-old.sh", installHandler.GetInstallScript)
@@ -153,6 +162,7 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 	settings.Get("/", settingHandler.GetSettings)
 	settings.Post("/", settingHandler.UpdateSettings)
 	settings.Post("/tunnel", settingHandler.UpdateTunnelSettings)
+	settings.Delete("/logs", settingHandler.ClearLogs)
 
 	// Service routes
 	servicesGroup := api.Group("/services", httpmw.AdminAuth(cfg.Config))
@@ -167,6 +177,7 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 	nodes.Post("/register", nodeHandler.CreateNode)
 	nodes.Get("/", nodeHandler.GetNodes)
 	nodes.Get("/:id", nodeHandler.GetNode)
+	nodes.Get("/:id/command", installHandler.GetNodeCommand)
 	nodes.Delete("/:id", nodeHandler.DeleteNode)
 	nodes.Post("/:id/install-agent", nodeHandler.InstallAgent)
 

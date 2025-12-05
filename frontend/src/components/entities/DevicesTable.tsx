@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import { Device, ProcessStep } from '../../types'
 import StatusBadge from '../common/StatusBadge'
 import CardShell from '../common/CardShell'
 import VerticalProcessTimeline from '../common/VerticalProcessTimeline'
-import InstallCommandModal from '../InstallCommandModal'
 import { Download, RefreshCw, Trash2, Terminal } from 'lucide-react'
 
 interface DevicesTableProps {
@@ -12,6 +10,7 @@ interface DevicesTableProps {
   onCleanup: (id: string) => void
   onDelete: (id: string) => void
   onInstallAgent: (id: string) => void
+  onShowCommand: (id: string) => void
   getStepsWithState: (template: ProcessStep[], currentIndex: number) => ProcessStep[]
   CLEANUP_STEPS: ProcessStep[]
   DELETE_STEPS: ProcessStep[]
@@ -24,12 +23,12 @@ export default function DevicesTable({
   onCleanup, 
   onDelete, 
   onInstallAgent,
+  onShowCommand,
   getStepsWithState,
   CLEANUP_STEPS,
   DELETE_STEPS,
   INSTALL_AGENT_STEPS
 }: DevicesTableProps) {
-  const [installCommandModal, setInstallCommandModal] = useState<{ isOpen: boolean; nodeId: string }>({ isOpen: false, nodeId: '' })
   return (
     <CardShell className="data-table-container">
       <div className="data-table-wrapper">
@@ -79,7 +78,18 @@ export default function DevicesTable({
                     <StatusBadge status={device.status} variant={statusVariant} />
                   </td>
                   <td className="data-table-cell-mono">{device.ip}</td>
-                  <td>{device.location}</td>
+                  <td>
+                    <div className="flex items-center">
+                      {device.flagCode && (
+                        <img 
+                          src={`https://flagcdn.com/20x15/${device.flagCode}.png`}
+                          alt={device.location}
+                          className="w-5 h-3.5 object-cover rounded-sm mr-2"
+                        />
+                      )}
+                      <span>{device.location}</span>
+                    </div>
+                  </td>
                   <td>
                     {device.status === 'Online' || device.status === 'Degraded' ? (
                       <div className="data-table-resources">
@@ -114,10 +124,10 @@ export default function DevicesTable({
                       )}
                       {(agentStatus === 'error' || agentStatus === 'not_installed') && (
                         <button 
-                          onClick={() => setInstallCommandModal({ isOpen: true, nodeId: device.id })}
+                          onClick={() => onShowCommand(device.id)}
                           disabled={isProcessing}
                           className="p-2 hover:bg-cyan-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Manual Install Command"
+                          title="Get Install Command"
                         >
                           <Terminal size={14} className="text-gray-400 hover:text-cyan-500" />
                         </button>
@@ -151,12 +161,6 @@ export default function DevicesTable({
           </tbody>
         </table>
       </div>
-      
-      <InstallCommandModal
-        isOpen={installCommandModal.isOpen}
-        onClose={() => setInstallCommandModal({ isOpen: false, nodeId: '' })}
-        nodeId={installCommandModal.nodeId}
-      />
     </CardShell>
   )
 }

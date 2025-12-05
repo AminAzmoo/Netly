@@ -2,6 +2,7 @@ import PageShell from '../components/layout/PageShell'
 import GeneralSettingsCard from '../components/settings/GeneralSettingsCard'
 import NetworkSettingsCard from '../components/settings/NetworkSettingsCard'
 import IntegrationsCard from '../components/settings/IntegrationsCard'
+import SystemCard from '../components/settings/SystemCard'
 
 export default function SettingsPage() {
   return (
@@ -13,6 +14,7 @@ export default function SettingsPage() {
         <GeneralSettingsCard />
         <NetworkSettingsCard />
         <IntegrationsCard />
+        <SystemCard />
         
         {/* Placeholder Security Card */}
         <div className="settings-security-card">

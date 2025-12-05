@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import { Device, ProcessStep } from '../../types'
 import CardShell from '../common/CardShell'
 import StatusBadge from '../common/StatusBadge'
 import VerticalProcessTimeline from '../common/VerticalProcessTimeline'
-import InstallCommandModal from '../InstallCommandModal'
 import { Server, Cpu, CircuitBoard, MapPin, Activity, Trash2, RefreshCw, Download, Terminal } from 'lucide-react'
 
 interface DeviceCardProps {
@@ -11,6 +9,7 @@ interface DeviceCardProps {
   onCleanup?: () => void
   onDelete?: () => void
   onInstallAgent?: () => void
+  onShowCommand?: () => void
   isProcessing?: boolean
   processSteps?: ProcessStep[]
   processType?: 'cleanup' | 'delete' | 'install-agent'
@@ -21,13 +20,13 @@ export default function DeviceCard({
   device, 
   onCleanup, 
   onDelete,
-  onInstallAgent, 
+  onInstallAgent,
+  onShowCommand, 
   isProcessing, 
   processSteps,
   processType,
   lastCleanupAt
 }: DeviceCardProps) {
-  const [installCommandModal, setInstallCommandModal] = useState(false)
   const agentStatus = (device as any).agentStatus || 'not_installed'
   const showInstallAgent = (agentStatus === 'not_installed' || agentStatus === 'error') && device.status !== 'Online' && device.status !== 'Installing'
   const statusVariant =
@@ -64,7 +63,7 @@ export default function DeviceCard({
               )}
               {(agentStatus === 'error' || agentStatus === 'not_installed') && (
                 <button 
-                  onClick={(e) => { e.stopPropagation(); setInstallCommandModal(true) }}
+                  onClick={(e) => { e.stopPropagation(); onShowCommand?.() }}
                   disabled={isProcessing}
                   className="p-2 hover:bg-cyan-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
                   title="Manual Install Command"
@@ -99,7 +98,16 @@ export default function DeviceCard({
             <div className="entity-info-row">
               <MapPin size={14} className="text-muted icon-mr-1" />
               <span className="entity-info-label">Location:</span>
-              <span>{device.location}</span>
+              <div className="flex items-center">
+                {device.flagCode && (
+                  <img 
+                    src={`https://flagcdn.com/20x15/${device.flagCode}.png`}
+                    alt={device.location}
+                    className="w-5 h-3.5 object-cover rounded-sm mr-2"
+                  />
+                )}
+                <span>{device.location}</span>
+              </div>
             </div>
           </div>
 
@@ -167,11 +175,6 @@ export default function DeviceCard({
         </div>
       )}
       
-      <InstallCommandModal
-        isOpen={installCommandModal}
-        onClose={() => setInstallCommandModal(false)}
-        nodeId={device.id}
-      />
     </CardShell>
   )
 }

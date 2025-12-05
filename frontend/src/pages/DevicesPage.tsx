@@ -5,7 +5,7 @@ import DeviceCard from '../components/entities/DeviceCard'
 import DevicesTable from '../components/entities/DevicesTable'
 import ViewToggle from '../components/common/ViewToggle'
 import AddDeviceModal from '../components/devices/AddDeviceModal'
-import InstallScriptModal from '../components/common/InstallScriptModal'
+import InstallCommandModal from '../components/InstallCommandModal'
 import Toast from '../components/common/Toast'
 import { useToast } from '../hooks/useToast'
 import { api } from '../lib/api'
@@ -59,19 +59,9 @@ export default function DevicesPage() {
   const [processes, setProcesses] = useState<Record<string, ActiveProcess>>({})
   const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentStatus>>({})
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false)
-  const [showInstallScript, setShowInstallScript] = useState(false)
+  const [commandModalNodeId, setCommandModalNodeId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const intervalsRef = useRef<Record<string, number>>({})
-
-  const { data: generalSettings } = useQuery({
-    queryKey: ['generalSettings'],
-    queryFn: () => api.getGeneralSettings(),
-    retry: 1,
-  })
-
-  const scriptUrl = generalSettings?.publicUrl 
-    ? `${generalSettings.publicUrl}/install.sh`
-    : `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:8081'}/install.sh`
 
   const { data: rawDevices = [], isLoading, refetch: refetchDevices } = useQuery({
     queryKey: ['nodes'],
@@ -111,6 +101,7 @@ export default function DevicesPage() {
       agentStatus,
       currentProcess: process?.type || null,
       currentStepIndex: process?.stepIndex,
+      flagCode: node.geo_data?.flag || null,
     }
   })
 
@@ -297,9 +288,6 @@ export default function DevicesPage() {
       subtitle="Manage and monitor all Netly nodes"
       headerRight={
         <div className="flex gap-3">
-          <button className="btn-primary-glow" onClick={() => setShowInstallScript(true)}>
-            Install Script
-          </button>
           <button className="btn-primary-glow" onClick={() => setIsAddDeviceOpen(true)}>
             Add Device
           </button>
@@ -352,6 +340,7 @@ export default function DevicesPage() {
                 onCleanup={() => handleCleanup(device.id)}
                 onDelete={() => handleDelete(device.id)}
                 onInstallAgent={() => handleInstallAgent(device.id)}
+                onShowCommand={() => setCommandModalNodeId(device.id)}
                 isProcessing={!!process}
                 processSteps={steps}
                 processType={process?.type}
@@ -367,6 +356,7 @@ export default function DevicesPage() {
           onCleanup={handleCleanup}
           onDelete={handleDelete}
           onInstallAgent={handleInstallAgent}
+          onShowCommand={(nodeId) => setCommandModalNodeId(nodeId)}
           getStepsWithState={getStepsWithState}
           CLEANUP_STEPS={CLEANUP_STEPS}
           DELETE_STEPS={DELETE_STEPS}
@@ -384,10 +374,10 @@ export default function DevicesPage() {
       }}
     />
 
-    <InstallScriptModal
-      isOpen={showInstallScript}
-      onClose={() => setShowInstallScript(false)}
-      scriptUrl={scriptUrl}
+    <InstallCommandModal
+      isOpen={!!commandModalNodeId}
+      onClose={() => setCommandModalNodeId(null)}
+      nodeId={commandModalNodeId || ''}
     />
 
     {deleteConfirmId && (

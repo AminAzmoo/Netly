@@ -27,7 +27,7 @@ logger:
 security:
   encryption_key: "change-me-in-production-32chars!"
   geoip_token: "5b089ad5d2a74086acffda1d70a30a57"
-  public_url: "https://netly.example.com"
+  public_url: "https://netly.arisen.ir"
 
 general:
   system_name: "Netly-Core-01"

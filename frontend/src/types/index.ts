@@ -22,6 +22,7 @@ export interface Device {
   lastAction?: string
   lastActionTime?: string
   processSteps?: ProcessStep[]
+  flagCode?: string
 }
 
 export type TunnelType = 'Single-hop' | 'Multi-hop'

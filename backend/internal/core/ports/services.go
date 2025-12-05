@@ -10,6 +10,7 @@ type NodeService interface {
 	CreateNode(ctx context.Context, input CreateNodeInput) (*domain.Node, error)
 	GetNodes(ctx context.Context) ([]domain.Node, error)
 	GetNodeByID(ctx context.Context, id uint) (*domain.Node, error)
+	UpdateNode(ctx context.Context, id uint, input UpdateNodeInput) (*domain.Node, error)
 	DeleteNode(ctx context.Context, id uint) error
 	UpdateNodeStatus(ctx context.Context, id uint, status domain.NodeStatus) error
 	InstallAgent(ctx context.Context, id uint) error
@@ -28,6 +29,15 @@ type CreateNodeInput struct {
 	Password string
 	SSHKey   string
 	GeoData  domain.JSONB
+}
+
+type UpdateNodeInput struct {
+	Name       *string
+	SSHPort    *int
+	Role       *domain.NodeRole
+	Username   *string
+	Password   *string
+	PrivateKey *string
 }
 
 type InstallerService interface {

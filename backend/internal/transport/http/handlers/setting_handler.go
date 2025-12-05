@@ -1,6 +1,7 @@
 package handlers
 
 import (
+    "os"
     "github.com/gofiber/fiber/v2"
     "github.com/netly/backend/internal/core/services"
     "github.com/netly/backend/internal/infrastructure/logger"
@@ -94,5 +95,20 @@ func (h *SettingHandler) UpdateTunnelSettings(c *fiber.Ctx) error {
 
     return c.JSON(dto.SuccessResponse{
         Message: "tunnel started successfully",
+    })
+}
+
+func (h *SettingHandler) ClearLogs(c *fiber.Ctx) error {
+    // Clear log files
+    logFiles := []string{"logs/app.log", "logs/error.log", "netly.log"}
+    for _, file := range logFiles {
+        if err := os.Truncate(file, 0); err != nil {
+            h.logger.Warnw("failed to clear log file", "file", file, "error", err)
+        }
+    }
+    
+    h.logger.Info("Log files cleared by admin")
+    return c.JSON(dto.SuccessResponse{
+        Message: "logs cleared successfully",
     })
 }
