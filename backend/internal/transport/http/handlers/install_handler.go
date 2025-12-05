@@ -10,14 +10,16 @@ import (
 )
 
 type InstallHandler struct {
-	settingService *services.SystemSettingService
-	logger         *logger.Logger
+	settingService    *services.SystemSettingService
+	logger            *logger.Logger
+	fallbackPublicURL string
 }
 
-func NewInstallHandler(settingService *services.SystemSettingService, logger *logger.Logger) *InstallHandler {
+func NewInstallHandler(settingService *services.SystemSettingService, logger *logger.Logger, fallbackPublicURL string) *InstallHandler {
 	return &InstallHandler{
-		settingService: settingService,
-		logger:         logger,
+		settingService:    settingService,
+		logger:            logger,
+		fallbackPublicURL: fallbackPublicURL,
 	}
 }
 
@@ -53,6 +55,16 @@ case $ARCH in
 esac
 echo "✓ Detected: Linux $ARCH"
 
+# --- FIX START: Create config before running agent ---
+# ایجاد فایل کانفیگ قبل از اجرای ایجنت برای جلوگیری از پنیک
+echo "📝 Creating initial configuration..."
+mkdir -p /etc/netly
+cat > /etc/netly/config.yaml <<EOF
+server_url: "${API_URL}"
+token: "${NODE_TOKEN}"
+EOF
+# --- FIX END ---
+
 # Download agent binary
 echo "📥 Downloading netly-agent..."
 BINARY_URL="${API_URL}/downloads/netly-agent-${ARCH}"
@@ -66,7 +78,8 @@ fi
 chmod +x /tmp/netly-agent
 
 # Run agent install command
-echo "⚙️  Installing agent..."
+echo "⚙️  Installing agent service..."
+# حالا که فایل کانفیگ وجود دارد، دستور install بدون خطا اجرا می‌شود
 /tmp/netly-agent install --server="${API_URL}" --token="${NODE_TOKEN}"
 
 if [ $? -eq 0 ]; then
@@ -91,7 +104,11 @@ func (h *InstallHandler) GetInstallScript(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).SendString("Internal server error")
 	}
 
-	if settings.PublicURL == "" {
+	apiURL := settings.PublicURL
+	if apiURL == "" {
+		apiURL = h.fallbackPublicURL
+	}
+	if apiURL == "" {
 		return c.Status(fiber.StatusServiceUnavailable).SendString("System Public URL not ready")
 	}
 
@@ -102,7 +119,7 @@ func (h *InstallHandler) GetInstallScript(c *fiber.Ctx) error {
 	}
 
 	data := map[string]string{
-		"APIURL":    settings.PublicURL,
+		"APIURL":    apiURL,
 		"NodeToken": token,
 	}
 
@@ -122,17 +139,14 @@ func (h *InstallHandler) GetNodeCommand(c *fiber.Ctx) error {
 	apiURL := ""
 	if settings, err := h.settingService.GetSettingsStruct(); err == nil && settings.PublicURL != "" {
 		apiURL = settings.PublicURL
-	}
-	if apiURL == "" {
-		if configURL := c.Get("X-Public-URL"); configURL != "" {
-			apiURL = configURL
-		} else {
-			apiURL = c.BaseURL()
-		}
+	} else if h.fallbackPublicURL != "" {
+		apiURL = h.fallbackPublicURL
+	} else {
+		apiURL = c.BaseURL()
 	}
 
 	nodeToken := fmt.Sprintf("node-token-%s", nodeID)
-	command := fmt.Sprintf("curl -sfL %s/install.sh?token=%s | sudo bash", apiURL, nodeToken)
+	command := fmt.Sprintf("curl -fL %s/install.sh?token=%s | sudo bash", apiURL, nodeToken)
 
 	return c.JSON(fiber.Map{
 		"command": command,

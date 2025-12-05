@@ -2,7 +2,7 @@ import { Device, ProcessStep } from '../../types'
 import StatusBadge from '../common/StatusBadge'
 import CardShell from '../common/CardShell'
 import VerticalProcessTimeline from '../common/VerticalProcessTimeline'
-import { Download, RefreshCw, Trash2, Terminal } from 'lucide-react'
+import { Download, RefreshCw, Trash2, Terminal, Edit3 } from 'lucide-react'
 
 interface DevicesTableProps {
   devices: Device[]
@@ -10,7 +10,8 @@ interface DevicesTableProps {
   onCleanup: (id: string) => void
   onDelete: (id: string) => void
   onInstallAgent: (id: string) => void
-  onShowCommand: (id: string) => void
+  onShowInstallCommand: (id: string) => void
+  onEdit: (device: Device) => void
   getStepsWithState: (template: ProcessStep[], currentIndex: number) => ProcessStep[]
   CLEANUP_STEPS: ProcessStep[]
   DELETE_STEPS: ProcessStep[]
@@ -23,7 +24,8 @@ export default function DevicesTable({
   onCleanup, 
   onDelete, 
   onInstallAgent,
-  onShowCommand,
+  onShowInstallCommand,
+  onEdit,
   getStepsWithState,
   CLEANUP_STEPS,
   DELETE_STEPS,
@@ -84,7 +86,7 @@ export default function DevicesTable({
                         <img 
                           src={`https://flagcdn.com/20x15/${device.flagCode}.png`}
                           alt={device.location}
-                          className="w-5 h-3.5 object-cover rounded-sm mr-2"
+                          className="device-table-flag-image"
                         />
                       )}
                       <span>{device.location}</span>
@@ -111,12 +113,12 @@ export default function DevicesTable({
                     )}
                   </td>
                   <td>
-                    <div className="flex items-center gap-2">
+                    <div className="device-table-actions-container">
                       {showInstallAgent && (
                         <button 
                           onClick={() => onInstallAgent(device.id)}
                           disabled={isProcessing}
-                          className="p-2 hover:bg-green-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="device-table-action-button device-table-action-button-install"
                           title="Auto Install Agent"
                         >
                           <Download size={14} className="text-gray-400 hover:text-green-500" />
@@ -124,9 +126,9 @@ export default function DevicesTable({
                       )}
                       {(agentStatus === 'error' || agentStatus === 'not_installed') && (
                         <button 
-                          onClick={() => onShowCommand(device.id)}
+                          onClick={() => onShowInstallCommand(device.id)}
                           disabled={isProcessing}
-                          className="p-2 hover:bg-cyan-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="device-table-action-button device-table-action-button-command"
                           title="Get Install Command"
                         >
                           <Terminal size={14} className="text-gray-400 hover:text-cyan-500" />
@@ -135,21 +137,27 @@ export default function DevicesTable({
                       <button 
                         onClick={() => onCleanup(device.id)}
                         disabled={isProcessing}
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="device-table-action-button device-table-action-button-cleanup"
                         title="Cleanup"
                       >
                         <RefreshCw size={14} className="text-gray-400" />
                       </button>
                       <button 
+                        onClick={() => onEdit(device)}
+                        className="device-table-action-button device-table-action-button-edit"
+                        title="Edit"
+                      >
+                        <Edit3 size={14} className="text-gray-400 hover:text-blue-500" />
+                      </button>
+                      <button 
                         onClick={() => onDelete(device.id)}
-                        disabled={isProcessing}
-                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="device-table-action-button device-table-action-button-delete"
                         title="Delete"
                       >
                         <Trash2 size={14} className="text-gray-400 hover:text-red-500" />
                       </button>
                       {isProcessing && steps && (
-                        <div className="ml-4">
+                        <div className="device-table-process-container">
                           <VerticalProcessTimeline steps={steps} variant="horizontal" />
                         </div>
                       )}

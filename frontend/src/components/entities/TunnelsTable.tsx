@@ -1,12 +1,37 @@
-import { Tunnel } from '../../types'
+import { Tunnel, ProcessStep } from '../../types'
 import StatusBadge from '../common/StatusBadge'
 import CardShell from '../common/CardShell'
 
-interface TunnelsTableProps {
-  tunnels: Tunnel[]
+interface ActiveProcess {
+  type: 'edit' | 'delete'
+  stepIndex: number
 }
 
-export default function TunnelsTable({ tunnels }: TunnelsTableProps) {
+interface TunnelsTableProps {
+  tunnels: Tunnel[]
+  processes?: Record<string, ActiveProcess>
+  editingId?: string | null
+  editDraft?: Tunnel | null
+  onEdit?: (tunnel: Tunnel) => void
+  onDelete?: (tunnelId: string) => void
+  onSave?: (tunnelId: string) => void
+  onCancel?: () => void
+  onDraftChange?: (draft: Tunnel | null) => void
+  getStepsWithState?: (template: ProcessStep[], currentIndex: number) => ProcessStep[]
+  EDIT_STEPS?: ProcessStep[]
+  DELETE_STEPS?: ProcessStep[]
+}
+
+export default function TunnelsTable({ 
+  tunnels,
+  processes: _processes,
+  editingId: _editingId,
+  editDraft: _editDraft,
+  onEdit: _onEdit,
+  onDelete: _onDelete,
+  onSave: _onSave,
+  onCancel: _onCancel
+}: TunnelsTableProps) {
   return (
     <CardShell className="overflow-hidden p-0">
       <div className="overflow-x-auto">

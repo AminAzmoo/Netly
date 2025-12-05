@@ -127,7 +127,7 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
     terminalHandler := handlers.NewTerminalHandler(nodeService, cfg.Logger)
     agentHandler := handlers.NewAgentHandler(nodeService, cfg.Logger, keyManager)
     cleanupHandler := handlers.NewCleanupHandler(cleanupService, nodeService, cfg.Logger)
-    installHandler := handlers.NewInstallHandler(settingService, cfg.Logger)
+    installHandler := handlers.NewInstallHandler(settingService, cfg.Logger, cfg.Config.Security.PublicURL)
     generalSettingsHandler := handlers.NewGeneralSettingsHandler(cfg.Logger)
 
 	// Static file server for agent binaries
@@ -177,6 +177,7 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 	nodes.Post("/register", nodeHandler.CreateNode)
 	nodes.Get("/", nodeHandler.GetNodes)
 	nodes.Get("/:id", nodeHandler.GetNode)
+	nodes.Put("/:id", nodeHandler.UpdateNode)
 	nodes.Get("/:id/command", installHandler.GetNodeCommand)
 	nodes.Delete("/:id", nodeHandler.DeleteNode)
 	nodes.Post("/:id/install-agent", nodeHandler.InstallAgent)

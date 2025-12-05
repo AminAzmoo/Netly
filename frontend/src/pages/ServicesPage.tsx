@@ -41,7 +41,7 @@ export default function ServicesPage() {
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false)
   const intervalsRef = useRef<Record<string, number>>({})
 
-  const { data: rawServices = [], isLoading, refetch: refetchServices } = useQuery({
+  const { data: rawServices = [], refetch: refetchServices } = useQuery({
     queryKey: ['services'],
     queryFn: () => api.getServices(),
   })
@@ -249,10 +249,6 @@ export default function ServicesPage() {
             onDelete={handleDelete}
             onSave={handleSaveEdit}
             onCancel={handleCancelEdit}
-            onDraftChange={setEditDraft}
-            getStepsWithState={getStepsWithState}
-            EDIT_STEPS={EDIT_STEPS}
-            DELETE_STEPS={DELETE_STEPS}
         />
       )}
     </PageShell>

@@ -135,30 +135,39 @@ func (tm *TunnelManager) monitorProcess(stdout, stderr io.ReadCloser, urlRegex *
 		tm.mu.Unlock()
 	}()
 
+	// Capture stderr for error logging
+	var stderrOutput []string
+
 	// Monitor stdout
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
+			tm.logger.Debugw("cloudflared stdout", "line", line)
 			tm.extractURL(line, urlRegex)
 		}
 	}()
 
-	// Monitor stderr  
+	// Monitor stderr and capture errors
 	go func() {
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
+			stderrOutput = append(stderrOutput, line)
+			tm.logger.Warnw("cloudflared stderr", "line", line)
 			tm.extractURL(line, urlRegex)
 		}
 	}()
 
 	// Wait for process to finish
 	err := tm.cmd.Wait()
-	if err != nil && tm.cmd.ProcessState != nil && !tm.cmd.ProcessState.Exited() {
-		tm.logger.Errorw("cloudflared process crashed unexpectedly", "error", err)
+	if err != nil {
+		tm.logger.Errorw("cloudflared process terminated with error", 
+			"error", err,
+			"stderr_lines", stderrOutput,
+			"exit_code", tm.cmd.ProcessState.ExitCode())
 	} else {
-		tm.logger.Info("cloudflared process terminated")
+		tm.logger.Info("cloudflared process terminated normally")
 	}
 }
 

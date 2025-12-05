@@ -1,11 +1,12 @@
 import { CheckCircle, AlertTriangle, XCircle, Info } from 'lucide-react'
 
-interface StatusBadgeProps {
+export interface StatusBadgeProps {
   status: string
   variant?: 'default' | 'neonA' | 'neonB' | 'warn' | 'error'
+  size?: 'sm' | 'md'
 }
 
-export default function StatusBadge({ status, variant = 'default' }: StatusBadgeProps) {
+export default function StatusBadge({ status, variant = 'default', size = 'md' }: StatusBadgeProps) {
   const variants = {
     default: 'status-badge-default',
     neonA: 'status-badge-neon-a',
@@ -14,23 +15,30 @@ export default function StatusBadge({ status, variant = 'default' }: StatusBadge
     error: 'status-badge-error',
   }
 
+  const sizes = {
+    sm: 'status-badge-sm',
+    md: '',
+  }
+
+  const iconSize = size === 'sm' ? 10 : 12
+
   const getIcon = () => {
     switch (variant) {
       case 'neonA':
-        return <CheckCircle size={12} className="icon-mr-1" />
+        return <CheckCircle size={iconSize} className="icon-mr-1" />
       case 'warn':
-        return <AlertTriangle size={12} className="icon-mr-1" />
+        return <AlertTriangle size={iconSize} className="icon-mr-1" />
       case 'error':
       case 'neonB':
-        return <XCircle size={12} className="icon-mr-1" />
+        return <XCircle size={iconSize} className="icon-mr-1" />
       default:
-        return <Info size={12} className="icon-mr-1" />
+        return <Info size={iconSize} className="icon-mr-1" />
     }
   }
 
   return (
     <span
-      className={`status-badge ${variants[variant]}`}
+      className={`status-badge ${variants[variant]} ${sizes[size]}`.trim()}
     >
       {getIcon()}
       {status}

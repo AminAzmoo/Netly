@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8081/api/v1'
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8081/api/v1'
 
 interface ApiError {
   error: string
@@ -59,6 +59,13 @@ class ApiClient {
 
   async deleteNode(id: string) {
     return this.request(`/nodes/${id}`, { method: 'DELETE' })
+  }
+
+  async updateNode(id: string, data: any) {
+    return this.request(`/nodes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
   }
 
   async installAgent(id: string) {

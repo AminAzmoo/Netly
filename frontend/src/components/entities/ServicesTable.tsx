@@ -1,4 +1,4 @@
-import { Service, ProcessStep } from '../../types'
+import { Service } from '../../types'
 import StatusBadge from '../common/StatusBadge'
 import CardShell from '../common/CardShell'
 
@@ -16,10 +16,6 @@ interface ServicesTableProps {
   onDelete: (serviceId: string) => void
   onSave: (serviceId: string) => void
   onCancel: () => void
-  onDraftChange: (draft: Service | null) => void
-  getStepsWithState: (template: ProcessStep[], currentIndex: number) => ProcessStep[]
-  EDIT_STEPS: ProcessStep[]
-  DELETE_STEPS: ProcessStep[]
 }
 
 export default function ServicesTable({ 
@@ -30,11 +26,7 @@ export default function ServicesTable({
   onEdit,
   onDelete,
   onSave,
-  onCancel,
-  onDraftChange,
-  getStepsWithState,
-  EDIT_STEPS,
-  DELETE_STEPS
+  onCancel
 }: ServicesTableProps) {
   return (
     <CardShell className="overflow-hidden p-0">

@@ -52,18 +52,19 @@ const INITIAL_INTEGRATIONS: IntegrationState[] = [
   },
   {
     id: 'cloudflare',
-    name: 'Cloudflare',
-    subtitle: 'Sync DNS and Proxy settings',
+    name: 'Cloudflare Tunnel',
+    subtitle: 'Expose your server via Cloudflare Tunnel',
     enabled: false,
     configured: false,
     expanded: false,
     processing: false,
     status: 'Disabled',
     fields: [
-      { key: 'token', label: 'API Token', value: '', type: 'password' },
+      { key: 'email', label: 'Cloudflare Email', value: '' },
+      { key: 'global_key', label: 'Global API Key', value: '', type: 'password' },
       { key: 'account_id', label: 'Account ID', value: '' },
-      { key: 'zone_id', label: 'Zone ID', value: '' },
-      { key: 'domain', label: 'Domain Pattern', value: '*.example.com' },
+      { key: 'tunnel_name', label: 'Tunnel Name', value: 'netly-tunnel' },
+      { key: 'public_url', label: 'Public URL (optional)', value: '', type: 'text' },
     ],
     steps: INITIAL_TIMELINE_STEPS
   },
@@ -105,7 +106,7 @@ export default function IntegrationsCard() {
     if (settings) {
       setIntegrations(prev => prev.map(int => {
         if (int.id === 'cloudflare') {
-          const isConfigured = !!settings.cloudflare_token
+          const isConfigured = !!(settings.cloudflare_email && settings.cloudflare_global_key && settings.cloudflare_account_id)
           const isEnabled = settings.cloudflare_enabled === 'true'
           return {
             ...int,

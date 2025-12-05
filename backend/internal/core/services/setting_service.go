@@ -1,60 +1,60 @@
 package services
 
 import (
-    "context"
-    "fmt"
-    "sort"
-    "sync"
+	"context"
+	"fmt"
+	"sort"
+	"sync"
 
-    "github.com/netly/backend/internal/core/ports"
-    "github.com/netly/backend/internal/domain"
-    "github.com/netly/backend/internal/infrastructure/logger"
+	"github.com/netly/backend/internal/core/ports"
+	"github.com/netly/backend/internal/domain"
+	"github.com/netly/backend/internal/infrastructure/logger"
 )
 
 type SystemSettingService struct {
-    repo   ports.SystemSettingRepository
-    logger *logger.Logger
-    mu     sync.Mutex
-    locks  map[string]*sync.Mutex
-    enableLocks bool
+	repo        ports.SystemSettingRepository
+	logger      *logger.Logger
+	mu          sync.Mutex
+	locks       map[string]*sync.Mutex
+	enableLocks bool
 }
 
 func NewSystemSettingService(repo ports.SystemSettingRepository, logger *logger.Logger, enableLocks bool) *SystemSettingService {
-    return &SystemSettingService{
-        repo:   repo,
-        logger: logger,
-        locks:  make(map[string]*sync.Mutex),
-        enableLocks: enableLocks,
-    }
+	return &SystemSettingService{
+		repo:        repo,
+		logger:      logger,
+		locks:       make(map[string]*sync.Mutex),
+		enableLocks: enableLocks,
+	}
 }
 
 func (s *SystemSettingService) lockKeys(keys ...string) func() {
-    if !s.enableLocks {
-        return func() {}
-    }
-    if len(keys) == 0 {
-        return func() {}
-    }
-    sort.Strings(keys)
-    s.mu.Lock()
-    acquired := make([]*sync.Mutex, 0, len(keys))
-    for _, k := range keys {
-        m := s.locks[k]
-        if m == nil {
-            m = &sync.Mutex{}
-            s.locks[k] = m
-        }
-        acquired = append(acquired, m)
-    }
-    s.mu.Unlock()
-    for _, m := range acquired {
-        m.Lock()
-    }
-    return func() {
-        for i := len(acquired) - 1; i >= 0; i-- {
-            acquired[i].Unlock()
-        }
-    }
+	if !s.enableLocks {
+		return func() {}
+	}
+	if len(keys) == 0 {
+		return func() {}
+	}
+	sort.Strings(keys)
+	s.mu.Lock()
+	acquired := make([]*sync.Mutex, 0, len(keys))
+	for _, k := range keys {
+		m := s.locks[k]
+		if m == nil {
+			m = &sync.Mutex{}
+			s.locks[k] = m
+		}
+		acquired = append(acquired, m)
+	}
+	s.mu.Unlock()
+	for _, m := range acquired {
+		m.Lock()
+	}
+	return func() {
+		for i := len(acquired) - 1; i >= 0; i-- {
+			acquired[i].Unlock()
+		}
+	}
 }
 
 func (s *SystemSettingService) UpdateSSHKeys(privateKey, publicKey string) error {
@@ -84,7 +84,7 @@ func (s *SystemSettingService) UpdateSSHKeys(privateKey, publicKey string) error
 func (s *SystemSettingService) GetSettings(ctx context.Context) (map[string]string, error) {
 	categories := []string{"ipam", "dns", "telegram", "policy", "integration", "general", "security", "tunnel"}
 	result := make(map[string]string)
-	
+
 	for _, cat := range categories {
 		settings, err := s.repo.GetByCategory(ctx, cat)
 		if err != nil {
@@ -95,7 +95,7 @@ func (s *SystemSettingService) GetSettings(ctx context.Context) (map[string]stri
 			result[setting.Key] = setting.Value
 		}
 	}
-	
+
 	return result, nil
 }
 
@@ -107,25 +107,31 @@ func (s *SystemSettingService) GetSettingsStruct() (*domain.SystemSettings, erro
 	}
 
 	return &domain.SystemSettings{
-		SSHPrivateKey:   settingsMap["ssh_private_key"],
-		SSHPublicKey:    settingsMap["ssh_public_key"],
-		CloudflareToken: settingsMap["cloudflare_token"],
-		PublicURL:       settingsMap["public_url"],
+		SSHPrivateKey:          settingsMap["ssh_private_key"],
+		SSHPublicKey:           settingsMap["ssh_public_key"],
+		CloudflareToken:        settingsMap["cloudflare_token"],
+		CloudflareEmail:        settingsMap["cloudflare_email"],
+		CloudflareGlobalKey:    settingsMap["cloudflare_global_key"],
+		CloudflareAccountID:    settingsMap["cloudflare_account_id"],
+		CloudflareTunnelID:     settingsMap["cloudflare_tunnel_id"],
+		CloudflareTunnelName:   settingsMap["cloudflare_tunnel_name"],
+		CloudflareTunnelSecret: settingsMap["cloudflare_tunnel_secret"],
+		PublicURL:              settingsMap["public_url"],
 	}, nil
 }
 
 func (s *SystemSettingService) UpdateSettings(ctx context.Context, settings map[string]interface{}) error {
-    if len(settings) > 0 {
-        keys := make([]string, 0, len(settings))
-        for key := range settings {
-            keys = append(keys, fmt.Sprintf("setting:%s", key))
-        }
-        unlock := s.lockKeys(keys...)
-        defer unlock()
-    }
-    for key, val := range settings {
-        var strVal string
-		
+	if len(settings) > 0 {
+		keys := make([]string, 0, len(settings))
+		for key := range settings {
+			keys = append(keys, fmt.Sprintf("setting:%s", key))
+		}
+		unlock := s.lockKeys(keys...)
+		defer unlock()
+	}
+	for key, val := range settings {
+		var strVal string
+
 		switch v := val.(type) {
 		case string:
 			strVal = v
@@ -138,7 +144,7 @@ func (s *SystemSettingService) UpdateSettings(ctx context.Context, settings map[
 		default:
 			strVal = fmt.Sprintf("%v", v)
 		}
-		
+
 		category := "general"
 		// Simple categorization logic
 		if len(key) > 4 && key[:5] == "ipam_" {
@@ -151,6 +157,8 @@ func (s *SystemSettingService) UpdateSettings(ctx context.Context, settings map[
 			category = "policy"
 		} else if len(key) > 12 && key[:12] == "integration_" {
 			category = "integration"
+		} else if len(key) > 11 && key[:11] == "cloudflare_" {
+			category = "tunnel"
 		} else if key == "cloudflare_token" || key == "public_url" {
 			category = "tunnel"
 		}
@@ -161,11 +169,11 @@ func (s *SystemSettingService) UpdateSettings(ctx context.Context, settings map[
 			Type:     "string",
 			Category: category,
 		}
-		
-        if err := s.repo.Set(ctx, setting); err != nil {
-            s.logger.Errorw("failed to set setting", "key", key, "error", err)
-            return err
-        }
-    }
-    return nil
+
+		if err := s.repo.Set(ctx, setting); err != nil {
+			s.logger.Errorw("failed to set setting", "key", key, "error", err)
+			return err
+		}
+	}
+	return nil
 }

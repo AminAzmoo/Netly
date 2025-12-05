@@ -1,6 +1,8 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+/* stylelint-disable at-rule-no-unknown */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* stylelint-enable at-rule-no-unknown */
 
 :root {
   /* Modern Obsidian Theme */
@@ -119,6 +121,10 @@
     border-color: rgba(239, 68, 68, 0.5);
     background-color: rgba(239, 68, 68, 0.2);
     color: #EF4444;
+  }
+  .status-badge-sm {
+    padding: 0.125rem 0.5rem;
+    font-size: 0.625rem;
   }
 
   /* HeaderDock */
@@ -956,7 +962,212 @@
   .gap-1 { gap: 0.25rem; }
   .gap-2 { gap: 0.5rem; }
   .gap-3 { gap: 0.75rem; }
-
+  
+  /* Device Card Specific Styles */
+  .device-card-container {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .device-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    position: relative;
+    z-index: 10;
+  }
+  
+  .device-header-left {
+    flex: 1 1 0%;
+    width: 100%;
+  }
+  
+  .device-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+  
+  .device-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .device-actions-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .device-action-button {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: colors 150ms;
+    opacity: 0.5;
+    cursor: pointer;
+  }
+  
+  .device-action-button-install {
+    background-color: rgba(16, 185, 129, 0.2);
+  }
+  
+  .device-action-button-command {
+    background-color: rgba(6, 182, 212, 0.2);
+  }
+  
+  .device-action-button-cleanup {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .device-action-button-edit {
+    background-color: rgba(59, 130, 246, 0.2);
+  }
+  
+  .device-action-button-delete {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+  
+  .device-info-container {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #9CA3AF;
+  }
+  
+  .device-info-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .device-info-label {
+    color: #6B7280;
+  }
+  
+  .device-flag-image {
+    width: 1.25rem;
+    height: 0.875rem;
+    object-fit: cover;
+    border-radius: 0.125rem;
+    margin-right: 0.5rem;
+  }
+  
+  .device-stats-container {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .device-stat-header {
+    margin-bottom: 0.25rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #9CA3AF;
+  }
+  
+  .device-stat-track {
+    height: 0.25rem;
+    width: 100%;
+    border-radius: 9999px;
+    background-color: #374151;
+  }
+  
+  .device-stat-bar {
+    height: 100%;
+    border-radius: 9999px;
+    background-color: var(--color-neon-a);
+  }
+  
+  .device-last-action-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+  }
+  
+  .device-last-action {
+    font-size: 0.75rem;
+    color: #6B7280;
+    display: flex;
+    align-items: center;
+  }
+  
+  .device-cleanup-time {
+    font-size: 0.75rem;
+    color: #6B7280;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  
+  .device-process-container {
+    margin-top: 1rem;
+  }
+  
+  /* Device Table Specific Styles */
+  .device-table-flag-image {
+    width: 1.25rem;
+    height: 0.875rem;
+    object-fit: cover;
+    border-radius: 0.125rem;
+    margin-right: 0.5rem;
+  }
+  
+  .device-table-actions-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .device-table-action-button {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: colors 150ms;
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .device-table-action-button-install {
+    background-color: rgba(16, 185, 129, 0.2);
+  }
+  
+  .device-table-action-button-command {
+    background-color: rgba(6, 182, 212, 0.2);
+  }
+  
+  .device-table-action-button-cleanup {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .device-table-action-button-edit {
+    background-color: rgba(59, 130, 246, 0.2);
+  }
+  
+  .device-table-action-button-delete {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+  
+  .device-table-process-container {
+    margin-left: 1rem;
+  }
+  
+  /* Button States */
+  .text-gray-400 { color: #9CA3AF; }
+  .group-hover\:text-green-500:hover { color: #10B981; }
+  .group-hover\:text-cyan-500:hover { color: #06B6D4; }
+  .group-hover\:text-neon-a:hover { color: #00E5FF; }
+  .group-hover\:text-blue-500:hover { color: #3B82F6; }
+  .group-hover\:text-red-500:hover { color: #EF4444; }
+  .text-green-500 { color: #10B981; }
+  .text-neon-a { color: #00E5FF; }
+  .text-red-500 { color: #EF4444; }
+  
   /* Dashboard specific */
   .dashboard-incidents-title {
     display: flex;
@@ -1353,4 +1564,164 @@
     padding-top: 0.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
   }
+  
+  /* Device Modal Specific Styles */
+  .device-modal-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  
+  .device-modal-backdrop {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+  }
+  
+  .device-modal-container {
+    position: relative;
+    width: 100%;
+    max-width: 42rem; /* 2xl = 42rem */
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: rgba(10, 10, 10, 0.3);
+    padding: 1.5rem;
+    backdrop-filter: blur(24px);
+    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  }
+  
+  .device-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+  
+  .device-modal-title {
+    font-size: 1.5rem; /* 2xl */
+    font-weight: 700;
+    color: #FFFFFF;
+  }
+  
+  .device-modal-close-button {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    transition: colors 150ms;
+  }
+  .device-modal-close-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .device-modal-form-grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (min-width: 768px) {
+    .device-modal-form-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .device-modal-form-col-span-2 {
+      grid-column: span 2 / span 2;
+    }
+  }
+  
+  .device-modal-auth-method-container {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+  
+  .device-modal-auth-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+  
+  .device-modal-radio-input {
+    accent-color: #7C3AED; /* purple-600 */
+  }
+  
+  .device-modal-text-sm {
+    font-size: 0.875rem; /* sm */
+    color: #D1D5DB; /* gray-300 */
+  }
+  
+  .device-modal-textarea {
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    border: 1px solid #1F2937;
+    border-radius: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #E5E7EB;
+    outline: none;
+    transition: border-color 150ms ease-in-out;
+    font-family: monospace;
+    font-size: 0.75rem; /* xs */
+  }
+  
+  .device-modal-cancel-button {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid #4B5563; /* gray-600 */
+    color: #D1D5DB; /* gray-300 */
+    transition: colors 150ms;
+    opacity: 0.5;
+  }
+  .device-modal-cancel-button:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .device-modal-submit-button {
+    background-color: rgba(124, 58, 237, 0.1);
+    color: var(--color-neon-a);
+    border: 1px solid rgba(124, 58, 237, 0.5);
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    font-weight: 600;
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.2);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .device-modal-submit-button:hover {
+    background-color: rgba(124, 58, 237, 0.2);
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+    transform: translateY(-1px);
+  }
+  
+  .device-modal-buttons-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+  
+  .device-modal-ip-disabled {
+    opacity: 0.5;
+  }
 }
+

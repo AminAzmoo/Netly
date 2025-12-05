@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/netly/backend/internal/infrastructure/logger"
@@ -9,7 +10,6 @@ import (
 
 type InstallScriptHandler struct {
 	logger *logger.Logger
-	config *fiber.Config
 }
 
 func NewInstallScriptHandler(logger *logger.Logger) *InstallScriptHandler {
@@ -20,6 +20,7 @@ func NewInstallScriptHandler(logger *logger.Logger) *InstallScriptHandler {
 
 func (h *InstallScriptHandler) GetInstallScript(c *fiber.Ctx) error {
 	publicURL := c.Get("X-Public-URL")
+	// Fallback logic if header is missing or is a tunnel placeholder
 	if publicURL == "" || publicURL == "https://YOUR-TUNNEL-URL.trycloudflare.com" {
 		scheme := "http"
 		if c.Protocol() == "https" {
@@ -27,15 +28,30 @@ func (h *InstallScriptHandler) GetInstallScript(c *fiber.Ctx) error {
 		}
 		publicURL = fmt.Sprintf("%s://%s", scheme, c.Hostname())
 	}
-	script := h.generateInstallScript(publicURL)
+
+	// Retrieve token from URL query parameter
+	token := c.Query("token")
+	if token == "" {
+		return c.Status(fiber.StatusBadRequest).SendString("Missing token parameter")
+	}
+
+	script := h.generateInstallScript(publicURL, token)
 	return c.Type("text/plain").SendString(script)
 }
 
-func (h *InstallScriptHandler) generateInstallScript(publicURL string) string {
+func (h *InstallScriptHandler) generateInstallScript(publicURL string, token string) string {
+	// Properly escape the values for shell safety to prevent injection
+	escapedPublicURL := strings.ReplaceAll(publicURL, "'", "'\"'\"'")
+	escapedToken := strings.ReplaceAll(token, "'", "'\"'\"'")
+
+	// We use Sprintf to inject Go variables into the Bash script.
+	// 1st %s -> BACKEND_URL='%s' (escapedPublicURL)
+	// 2nd %s -> token: '%s' (escapedToken)
 	return fmt.Sprintf(`#!/bin/bash
 set -e
 
-BACKEND_URL="%s"
+# 1. Define Backend URL globally for the script
+BACKEND_URL='%s'
 AGENT_VERSION="1.0.0"
 
 echo "🚀 Installing Netly Agent..."
@@ -61,15 +77,24 @@ case "$OS" in
         sudo yum install -y curl wget
         ;;
     *)
-        echo "⚠️  Unknown OS, skipping dependencies"
+        echo "⚠️  Unknown OS, skipping dependencies check"
         ;;
 esac
 
+# Create config directory and file
+echo "📝 Creating config file..."
+sudo mkdir -p /etc/netly
+sudo tee /etc/netly/config.yaml > /dev/null <<EOF
+server_url: "${BACKEND_URL}"
+token: '%s'
+EOF
+
 # Download agent binary
 echo "⬇️  Downloading agent..."
+# Use the bash variable defined at the top
 AGENT_URL="${BACKEND_URL}/downloads/netly-agent"
 sudo curl -fsSL "$AGENT_URL" -o /usr/local/bin/netly-agent || {
-    echo "❌ Failed to download agent"
+    echo "❌ Failed to download agent from $AGENT_URL"
     exit 1
 }
 
@@ -84,7 +109,6 @@ After=network.target
 
 [Service]
 Type=simple
-Environment="BACKEND_URL=${BACKEND_URL}"
 ExecStart=/usr/local/bin/netly-agent
 Restart=always
 RestartSec=5
@@ -110,5 +134,5 @@ else
     echo "❌ Agent failed to start. Check logs: sudo journalctl -u netly-agent -f"
     exit 1
 fi
-`, publicURL)
+`, escapedPublicURL, escapedToken)
 }

@@ -32,24 +32,24 @@ const (
 type TunnelProtocol string
 
 const (
-    TunnelProtocolWireGuard TunnelProtocol = "wireguard"
-    TunnelProtocolHysteria2 TunnelProtocol = "hysteria2"
-    TunnelProtocolReality   TunnelProtocol = "vless_reality"
+	TunnelProtocolWireGuard TunnelProtocol = "wireguard"
+	TunnelProtocolHysteria2 TunnelProtocol = "hysteria2"
+	TunnelProtocolReality   TunnelProtocol = "vless_reality"
 )
 
 type TunnelType string
 
 const (
-    TunnelTypeDirect TunnelType = "direct"
-    TunnelTypeChain  TunnelType = "chain"
+	TunnelTypeDirect TunnelType = "direct"
+	TunnelTypeChain  TunnelType = "chain"
 )
 
 type TunnelStatus string
 
 const (
-    TunnelStatusPending TunnelStatus = "pending"
-    TunnelStatusActive  TunnelStatus = "active"
-    TunnelStatusFailed  TunnelStatus = "failed"
+	TunnelStatusPending TunnelStatus = "pending"
+	TunnelStatusActive  TunnelStatus = "active"
+	TunnelStatusFailed  TunnelStatus = "failed"
 )
 
 type ServiceProtocol string
@@ -123,7 +123,6 @@ type Node struct {
 	Services      []Service `gorm:"foreignKey:NodeID" json:"services,omitempty"`
 }
 
-
 type Tunnel struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
 	CreatedAt time.Time      `json:"created_at"`
@@ -131,17 +130,17 @@ type Tunnel struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
 	Name         string         `gorm:"size:255;not null" json:"name"`
-    Protocol     TunnelProtocol `gorm:"size:20;not null" json:"protocol"`
-    InternalIPv4 string         `gorm:"size:15" json:"internal_ipv4"`
-    InternalIPv6 string         `gorm:"size:45" json:"internal_ipv6"`
-    SourcePort   int            `gorm:"not null" json:"source_port"`
-    DestPort     int            `gorm:"not null" json:"dest_port"`
-    Config       JSONB          `gorm:"type:jsonb" json:"config"`
-    Status       TunnelStatus   `gorm:"size:20;not null;default:'pending'" json:"status"`
-    Type         TunnelType     `gorm:"size:20;default:'direct'" json:"type"`
-    Hops         JSONB          `gorm:"type:jsonb" json:"hops"`
-    Nodes        JSONB          `gorm:"type:jsonb" json:"nodes"`
-    Segments     JSONB          `gorm:"type:jsonb" json:"segments"`           // Details for each hop
+	Protocol     TunnelProtocol `gorm:"size:20;not null" json:"protocol"`
+	InternalIPv4 string         `gorm:"size:15" json:"internal_ipv4"`
+	InternalIPv6 string         `gorm:"size:45" json:"internal_ipv6"`
+	SourcePort   int            `gorm:"not null" json:"source_port"`
+	DestPort     int            `gorm:"not null" json:"dest_port"`
+	Config       JSONB          `gorm:"type:jsonb" json:"config"`
+	Status       TunnelStatus   `gorm:"size:20;not null;default:'pending'" json:"status"`
+	Type         TunnelType     `gorm:"size:20;default:'direct'" json:"type"`
+	Hops         JSONB          `gorm:"type:jsonb" json:"hops"`
+	Nodes        JSONB          `gorm:"type:jsonb" json:"nodes"`
+	Segments     JSONB          `gorm:"type:jsonb" json:"segments"` // Details for each hop
 
 	// Relationships
 	SourceNodeID uint  `gorm:"not null;index" json:"source_node_id"`
@@ -183,10 +182,16 @@ type TimelineEvent struct {
 }
 
 type SystemSettings struct {
-	SSHPrivateKey  string
-	SSHPublicKey   string
-	CloudflareToken string
-	PublicURL      string
+	SSHPrivateKey          string
+	SSHPublicKey           string
+	CloudflareToken        string
+	CloudflareEmail        string
+	CloudflareGlobalKey    string
+	CloudflareAccountID    string
+	CloudflareTunnelID     string
+	CloudflareTunnelName   string
+	CloudflareTunnelSecret string
+	PublicURL              string
 }
 
 type SystemSetting struct {
@@ -209,11 +214,11 @@ type IPAllocation struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
-	NodeID    uint   `gorm:"not null;index" json:"node_id"`
-	Node      *Node  `gorm:"constraint:OnDelete:CASCADE" json:"node,omitempty"`
-	IPAddress string `gorm:"size:45;not null;index" json:"ip_address"`
-	IPVersion int    `gorm:"default:4" json:"ip_version"`
-	InUse     bool   `gorm:"default:true" json:"in_use"`
+	NodeID      uint   `gorm:"not null;index" json:"node_id"`
+	Node        *Node  `gorm:"constraint:OnDelete:CASCADE" json:"node,omitempty"`
+	IPAddress   string `gorm:"size:45;not null;index" json:"ip_address"`
+	IPVersion   int    `gorm:"default:4" json:"ip_version"`
+	InUse       bool   `gorm:"default:true" json:"in_use"`
 	AllocatedTo string `gorm:"size:100" json:"allocated_to"`
 }
 

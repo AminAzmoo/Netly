@@ -40,7 +40,7 @@ export default function TunnelsPage() {
   const [isAddTunnelOpen, setIsAddTunnelOpen] = useState(false)
   const intervalsRef = useRef<Record<string, number>>({})
 
-  const { data: rawTunnels = [], isLoading, refetch: refetchTunnels } = useQuery({
+  const { data: rawTunnels = [], refetch: refetchTunnels } = useQuery({
     queryKey: ['tunnels'],
     queryFn: () => api.getTunnels(),
   })

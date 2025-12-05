@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import CardShell from '../common/CardShell'
-import { api } from '../../lib/api'
 
 export default function SystemCard() {
   const [isClearing, setIsClearing] = useState(false)

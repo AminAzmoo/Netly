@@ -4,12 +4,12 @@ import PageShell from '../components/layout/PageShell'
 import DeviceCard from '../components/entities/DeviceCard'
 import DevicesTable from '../components/entities/DevicesTable'
 import ViewToggle from '../components/common/ViewToggle'
-import AddDeviceModal from '../components/devices/AddDeviceModal'
+import DeviceModal from '../components/devices/DeviceModal'
 import InstallCommandModal from '../components/InstallCommandModal'
 import Toast from '../components/common/Toast'
 import { useToast } from '../hooks/useToast'
 import { api } from '../lib/api'
-import { Device, ProcessStep } from '../types'
+import { Device, ProcessStep, DeviceStatus } from '../types'
 
 // Define steps templates
 const CLEANUP_STEPS: ProcessStep[] = [
@@ -59,11 +59,12 @@ export default function DevicesPage() {
   const [processes, setProcesses] = useState<Record<string, ActiveProcess>>({})
   const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentStatus>>({})
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false)
-  const [commandModalNodeId, setCommandModalNodeId] = useState<string | null>(null)
+  const [editingNode, setEditingNode] = useState<DeviceWithState | null>(null)
+  const [installCommandNodeId, setInstallCommandNodeId] = useState<string | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const intervalsRef = useRef<Record<string, number>>({})
 
-  const { data: rawDevices = [], isLoading, refetch: refetchDevices } = useQuery({
+  const { data: rawDevices = [], refetch: refetchDevices } = useQuery({
     queryKey: ['nodes'],
     queryFn: () => api.getNodes(),
   })
@@ -74,7 +75,7 @@ export default function DevicesPage() {
     const backendStatus = node.status?.toLowerCase() || 'pending'
     const agentStatus = agentStatuses[nodeId] || process?.agentStatus || (backendStatus === 'online' ? 'online' : 'not_installed')
     
-    let deviceStatus = 'Offline'
+    let deviceStatus: DeviceStatus = 'Offline'
     if (process?.type === 'install-agent') {
       deviceStatus = 'Installing'
     } else if (backendStatus === 'online') {
@@ -82,7 +83,7 @@ export default function DevicesPage() {
     } else if (backendStatus === 'installing') {
       deviceStatus = 'Installing'
     } else if (backendStatus === 'error') {
-      deviceStatus = 'Error'
+      deviceStatus = 'Offline' // Map error to Offline since Error is not a valid DeviceStatus
     } else if (backendStatus === 'pending') {
       deviceStatus = 'Pending'
     }
@@ -340,7 +341,8 @@ export default function DevicesPage() {
                 onCleanup={() => handleCleanup(device.id)}
                 onDelete={() => handleDelete(device.id)}
                 onInstallAgent={() => handleInstallAgent(device.id)}
-                onShowCommand={() => setCommandModalNodeId(device.id)}
+                onShowInstallCommand={() => setInstallCommandNodeId(device.id)}
+                onEdit={() => setEditingNode(device)}
                 isProcessing={!!process}
                 processSteps={steps}
                 processType={process?.type}
@@ -356,7 +358,8 @@ export default function DevicesPage() {
           onCleanup={handleCleanup}
           onDelete={handleDelete}
           onInstallAgent={handleInstallAgent}
-          onShowCommand={(nodeId) => setCommandModalNodeId(nodeId)}
+          onShowInstallCommand={(nodeId) => setInstallCommandNodeId(nodeId)}
+          onEdit={(device) => setEditingNode(device)}
           getStepsWithState={getStepsWithState}
           CLEANUP_STEPS={CLEANUP_STEPS}
           DELETE_STEPS={DELETE_STEPS}
@@ -365,19 +368,24 @@ export default function DevicesPage() {
       )}
     </PageShell>
     
-    <AddDeviceModal
-      isOpen={isAddDeviceOpen}
-      onClose={() => setIsAddDeviceOpen(false)}
+    <DeviceModal
+      isOpen={isAddDeviceOpen || !!editingNode}
+      onClose={() => {
+        setIsAddDeviceOpen(false)
+        setEditingNode(null)
+      }}
+      initialData={editingNode || undefined}
       onSuccess={() => {
         refetchDevices()
-        showToast('Device added successfully', 'success')
+        showToast(editingNode ? 'Device updated successfully' : 'Device added successfully', 'success')
+        setEditingNode(null)
       }}
     />
 
     <InstallCommandModal
-      isOpen={!!commandModalNodeId}
-      onClose={() => setCommandModalNodeId(null)}
-      nodeId={commandModalNodeId || ''}
+      isOpen={!!installCommandNodeId}
+      onClose={() => setInstallCommandNodeId(null)}
+      nodeId={installCommandNodeId || ''}
     />
 
     {deleteConfirmId && (
