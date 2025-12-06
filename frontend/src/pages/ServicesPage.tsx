@@ -258,7 +258,6 @@ export default function ServicesPage() {
       onClose={() => setIsAddServiceOpen(false)}
       onSuccess={refetchServices}
       nodes={nodes}
-      tunnels={tunnels}
     />
     </>
   )

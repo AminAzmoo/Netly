@@ -23,71 +23,78 @@ func NewInstallHandler(settingService *services.SystemSettingService, logger *lo
 	}
 }
 
+// FIX:
+// 1. Filename changed from config.yaml -> agent.yaml
+// 2. YAML keys changed: server_url -> backend_url, token -> node_token
 const installScriptTemplate = `#!/bin/bash
 set -e
 
 API_URL="{{.APIURL}}"
 NODE_TOKEN="{{.NodeToken}}"
 
-echo "🚀 Netly Agent Installer"
-echo "========================"
+echo "🚀 Netly Agent Installer (Fixed)"
+echo "=============================="
 
-# Check if running as root
 if [ "$EUID" -ne 0 ]; then 
    echo "❌ Please run as root (use sudo)"
    exit 1
 fi
 
-# Detect OS/Arch
-echo "🔍 Detecting system architecture..."
 ARCH=$(uname -m)
 case $ARCH in
-    x86_64)
-        ARCH="amd64"
-        ;;
-    aarch64|arm64)
-        ARCH="arm64"
-        ;;
-    *)
-        echo "❌ Unsupported architecture: $ARCH"
-        exit 1
-        ;;
+    x86_64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+    *) echo "❌ Unsupported architecture: $ARCH"; exit 1 ;;
 esac
-echo "✓ Detected: Linux $ARCH"
 
-# --- FIX START: Create config before running agent ---
-# ایجاد فایل کانفیگ قبل از اجرای ایجنت برای جلوگیری از پنیک
-echo "📝 Creating initial configuration..."
+# 1. ساخت فایل کانفیگ با نام و محتوای صحیح
+echo "📝 Creating configuration..."
 mkdir -p /etc/netly
-cat > /etc/netly/config.yaml <<EOF
-server_url: "${API_URL}"
-token: "${NODE_TOKEN}"
-EOF
-# --- FIX END ---
 
-# Download agent binary
+# اصلاح مهم: تغییر نام فایل به agent.yaml و کلیدها طبق کد Go
+cat > /etc/netly/agent.yaml <<EOF
+backend_url: "${API_URL}"
+node_token: "${NODE_TOKEN}"
+log_path: "/var/log/netly-agent.log"
+heartbeat_interval: 10s
+EOF
+
+# 2. دانلود ایجنت
 echo "📥 Downloading netly-agent..."
 BINARY_URL="${API_URL}/downloads/netly-agent-${ARCH}"
-curl -sfL "$BINARY_URL" -o /tmp/netly-agent
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to download agent binary"
-    exit 1
-fi
+curl -sfL "$BINARY_URL" -o /usr/local/bin/netly-agent
+chmod +x /usr/local/bin/netly-agent
 
-# Make executable
-chmod +x /tmp/netly-agent
+# 3. ساخت سرویس
+echo "⚙️  Configuring systemd service..."
+cat > /etc/systemd/system/netly-agent.service <<EOF
+[Unit]
+Description=Netly Agent
+After=network.target
 
-# Run agent install command
-echo "⚙️  Installing agent service..."
-# حالا که فایل کانفیگ وجود دارد، دستور install بدون خطا اجرا می‌شود
-/tmp/netly-agent install --server="${API_URL}" --token="${NODE_TOKEN}"
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/netly-agent --config /etc/netly/agent.yaml
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
 
-if [ $? -eq 0 ]; then
-    echo "✅ Installation complete!"
-    rm -f /tmp/netly-agent
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 4. اجرا
+echo "▶️  Starting agent..."
+systemctl daemon-reload
+systemctl enable netly-agent
+systemctl restart netly-agent
+
+sleep 2
+if systemctl is-active --quiet netly-agent; then
+    echo "✅ Installation complete! Agent is running."
 else
-    echo "❌ Installation failed"
-    rm -f /tmp/netly-agent
+    echo "❌ Agent failed to start. Check logs: journalctl -u netly-agent -f"
     exit 1
 fi
 `
@@ -135,7 +142,6 @@ func (h *InstallHandler) GetNodeCommand(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Missing node ID"})
 	}
 
-	// Resolve public URL with priority: DB > Config > Request Host
 	apiURL := ""
 	if settings, err := h.settingService.GetSettingsStruct(); err == nil && settings.PublicURL != "" {
 		apiURL = settings.PublicURL

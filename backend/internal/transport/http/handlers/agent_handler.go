@@ -1,25 +1,31 @@
 package handlers
 
 import (
-    "encoding/json"
-    "strconv"
-    "strings"
+	"encoding/json"
+	"strconv"
+	"strings"
 
-    "github.com/gofiber/fiber/v2"
-    "github.com/netly/backend/internal/core/ports"
-    "github.com/netly/backend/internal/core/services"
-    "github.com/netly/backend/internal/domain"
-    "github.com/netly/backend/internal/infrastructure/logger"
+	"github.com/gofiber/fiber/v2"
+	"github.com/netly/backend/internal/core/ports"
+	"github.com/netly/backend/internal/core/services"
+	"github.com/netly/backend/internal/domain"
+	"github.com/netly/backend/internal/infrastructure/logger"
 )
 
 type AgentHandler struct {
-    nodeService ports.NodeService
-    logger      *logger.Logger
-    keyManager  *services.KeyManager
+	nodeService ports.NodeService
+	taskService ports.TaskService
+	logger      *logger.Logger
+	keyManager  *services.KeyManager
 }
 
-func NewAgentHandler(nodeService ports.NodeService, logger *logger.Logger, keyManager *services.KeyManager) *AgentHandler {
-    return &AgentHandler{nodeService: nodeService, logger: logger, keyManager: keyManager}
+func NewAgentHandler(nodeService ports.NodeService, taskService ports.TaskService, logger *logger.Logger, keyManager *services.KeyManager) *AgentHandler {
+	return &AgentHandler{
+		nodeService: nodeService,
+		taskService: taskService,
+		logger:      logger,
+		keyManager:  keyManager,
+	}
 }
 
 type SystemStats struct {
@@ -91,61 +97,87 @@ func (h *AgentHandler) RegisterNode(c *fiber.Ctx) error {
 }
 
 func (h *AgentHandler) Heartbeat(c *fiber.Ctx) error {
-    authHeader := c.Get("Authorization")
-    if authHeader == "" {
-        h.logger.Warnw("agent_heartbeat_missing_auth")
-        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Missing authorization header"})
-    }
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		h.logger.Warnw("agent_heartbeat_missing_auth")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Missing authorization header"})
+	}
 
-    parts := strings.Split(authHeader, " ")
-    if len(parts) != 2 || parts[0] != "Bearer" {
-        h.logger.Warnw("agent_heartbeat_invalid_auth_header")
-        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid authorization header"})
-    }
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		h.logger.Warnw("agent_heartbeat_invalid_auth_header")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid authorization header"})
+	}
 
-    token := parts[1]
-    if !strings.HasPrefix(token, "node-token-") {
-        h.logger.Warnw("agent_heartbeat_invalid_token_format")
-        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token format"})
-    }
+	token := parts[1]
+	if !strings.HasPrefix(token, "node-token-") {
+		h.logger.Warnw("agent_heartbeat_invalid_token_format")
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token format"})
+	}
 
-    nodeIDStr := strings.TrimPrefix(token, "node-token-")
-    nodeID, err := strconv.Atoi(nodeIDStr)
-    if err != nil {
-        h.logger.Warnw("agent_heartbeat_invalid_node_id", "value", nodeIDStr)
-        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid node ID in token"})
-    }
-	
-    var req HeartbeatRequest
-    if err := c.BodyParser(&req); err != nil {
-        h.logger.Warnw("agent_heartbeat_body_parse_failed", "error", err)
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
-    }
+	nodeIDStr := strings.TrimPrefix(token, "node-token-")
+	nodeID, err := strconv.Atoi(nodeIDStr)
+	if err != nil {
+		h.logger.Warnw("agent_heartbeat_invalid_node_id", "value", nodeIDStr)
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid node ID in token"})
+	}
 
-    if req.Stats == nil {
-        h.logger.Warnw("agent_heartbeat_missing_stats", "node_id", nodeID)
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Missing stats"})
-    }
+	var req HeartbeatRequest
+	if err := c.BodyParser(&req); err != nil {
+		h.logger.Warnw("agent_heartbeat_body_parse_failed", "error", err)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request body"})
+	}
 
-    statsJSON, _ := json.Marshal(req.Stats)
-    var statsMap domain.JSONB
-    json.Unmarshal(statsJSON, &statsMap)
+	if req.Stats == nil {
+		h.logger.Warnw("agent_heartbeat_missing_stats", "node_id", nodeID)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Missing stats"})
+	}
 
-    h.logger.Infow("agent_heartbeat_received", 
-        "node_id", nodeID, 
-        "cpu", req.Stats.CPUUsage, 
-        "ram", req.Stats.RAMUsage,
-        "ram_total_mb", req.Stats.RAMTotal/1024/1024,
-        "ram_used_mb", req.Stats.RAMUsed/1024/1024,
-        "uptime", req.Stats.Uptime,
-        "hostname", req.Stats.Hostname,
-    )
+	statsJSON, _ := json.Marshal(req.Stats)
+	var statsMap domain.JSONB
+	json.Unmarshal(statsJSON, &statsMap)
 
-    if err := h.nodeService.UpdateNodeStats(c.Context(), uint(nodeID), statsMap); err != nil {
-        h.logger.Errorw("agent_heartbeat_update_failed", "node_id", nodeID, "error", err)
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-    }
+	h.logger.Infow("agent_heartbeat_received",
+		"node_id", nodeID,
+		"cpu", req.Stats.CPUUsage,
+		"ram", req.Stats.RAMUsage,
+		"ram_total_mb", req.Stats.RAMTotal/1024/1024,
+		"ram_used_mb", req.Stats.RAMUsed/1024/1024,
+		"uptime", req.Stats.Uptime,
+		"hostname", req.Stats.Hostname,
+	)
 
-    h.logger.Infow("agent_heartbeat_ok", "node_id", nodeID)
-    return c.SendStatus(fiber.StatusOK)
+	if err := h.nodeService.UpdateNodeStats(c.Context(), uint(nodeID), statsMap); err != nil {
+		h.logger.Errorw("agent_heartbeat_update_failed", "node_id", nodeID, "error", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// ==================== FETCH PENDING COMMANDS ====================
+	var commands []*domain.Command
+	if h.taskService != nil {
+		pendingCmds, err := h.taskService.GetPendingCommands(uint(nodeID))
+		if err != nil {
+			h.logger.Warnw("agent_heartbeat_get_commands_failed", "node_id", nodeID, "error", err)
+		} else if len(pendingCmds) > 0 {
+			h.logger.Infow("agent_heartbeat_commands_found", "node_id", nodeID, "count", len(pendingCmds))
+
+			// Update command status to Processing
+			for _, cmd := range pendingCmds {
+				if err := h.taskService.UpdateCommandStatus(cmd.ID, domain.CommandStatusProcessing, "", ""); err != nil {
+					h.logger.Warnw("agent_heartbeat_update_command_status_failed", "command_id", cmd.ID, "error", err)
+				}
+			}
+			commands = pendingCmds
+		}
+	}
+
+	h.logger.Infow("agent_heartbeat_ok", "node_id", nodeID, "commands_dispatched", len(commands))
+
+	// Return response with commands
+	response := domain.HeartbeatResponse{
+		Status:   "ok",
+		Commands: commands,
+	}
+
+	return c.JSON(response)
 }

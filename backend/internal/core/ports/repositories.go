@@ -13,6 +13,8 @@ type NodeRepository interface {
 	GetByIPWithDeleted(ctx context.Context, ip string) (*domain.Node, error)
 	GetAll(ctx context.Context) ([]domain.Node, error)
 	Update(ctx context.Context, node *domain.Node) error
+	UpdateStatus(ctx context.Context, id uint, status string) error
+	UpdateLastLog(ctx context.Context, id uint, log string) error
 	Restore(ctx context.Context, node *domain.Node) error
 	Delete(ctx context.Context, id uint) error
 }

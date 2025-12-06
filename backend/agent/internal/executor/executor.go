@@ -3,6 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os/exec"
 	"time"
@@ -78,8 +79,18 @@ func (e *Executor) ExecuteScript(script string, interpreter string) (*CommandRes
 
 	start := time.Now()
 
-	cmd := exec.CommandContext(ctx, interpreter)
-	cmd.Stdin = bytes.NewBufferString(script)
+	var cmd *exec.Cmd
+	// Use sudo sh -c for shell interpreters to ensure complex commands (pipes, redirects) work with permissions
+	// We use base64 encoding to avoid any issues with quoting or special characters
+	if interpreter == "sh" || interpreter == "bash" {
+		encodedScript := base64.StdEncoding.EncodeToString([]byte(script))
+		// echo 'ENCODED' | base64 -d | interpreter
+		command := fmt.Sprintf("echo '%s' | base64 -d | %s", encodedScript, interpreter)
+		cmd = exec.CommandContext(ctx, "sudo", "sh", "-c", command)
+	} else {
+		cmd = exec.CommandContext(ctx, interpreter)
+		cmd.Stdin = bytes.NewBufferString(script)
+	}
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

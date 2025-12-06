@@ -178,6 +178,46 @@ class ApiClient {
       body: JSON.stringify(data),
     })
   }
+
+  // Network Resources (IPAM/PortAM)
+  async getNetworkStats() {
+    return this.request<{
+      ipam: {
+        ipv4_cidr: string
+        ipv6_cidr: string
+        allocated_count: number
+        allocations: Array<{
+          ip: string
+          ipv6: string
+          type: string
+          resource_id: number
+          resource_name: string
+          allocated_at: string
+        }>
+      }
+      portam: {
+        min_port: number
+        max_port: number
+        total_range: number
+        used_count: number
+        available_count: number
+        allocations: Array<{
+          port: number
+          node_id: number
+          node_name: string
+          protocol: string
+          type: string
+          resource_id: number
+          resource_name: string
+        }>
+      }
+      summary: {
+        total_nodes: number
+        total_tunnels: number
+        total_services: number
+      }
+    }>('/network/stats')
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL)

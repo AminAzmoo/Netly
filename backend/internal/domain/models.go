@@ -117,6 +117,16 @@ type Node struct {
 	Stats    JSONB      `gorm:"type:jsonb" json:"stats"` // Added Stats field
 	IsActive bool       `gorm:"default:true" json:"is_active"`
 
+	// WireGuard Keys
+	WireGuardPrivateKey string `gorm:"type:text" json:"-"`
+	WireGuardPublicKey  string `gorm:"size:255" json:"wireguard_public_key,omitempty"`
+
+	// Private IP for internal communication (Hyper-V/VPC)
+	PrivateIP string `gorm:"size:45" json:"private_ip,omitempty"`
+
+	// Last error log for debugging
+	LastLog string `gorm:"type:text" json:"last_log,omitempty"`
+
 	// Relationships
 	SourceTunnels []Tunnel  `gorm:"foreignKey:SourceNodeID" json:"source_tunnels,omitempty"`
 	DestTunnels   []Tunnel  `gorm:"foreignKey:DestNodeID" json:"dest_tunnels,omitempty"`

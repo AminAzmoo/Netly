@@ -3,9 +3,23 @@ import { Device, ProcessStep } from '../../types'
 import CardShell from '../common/CardShell'
 import StatusBadge from '../common/StatusBadge'
 import VerticalProcessTimeline from '../common/VerticalProcessTimeline'
-import { Server, Cpu, CircuitBoard, MapPin, Activity, Trash2, RefreshCw, Download, Terminal, Edit, LucideIcon } from 'lucide-react'
+import { 
+  Server, Cpu, CircuitBoard, MapPin, Activity, 
+  Trash2, RefreshCw, Download, Terminal, Edit, LucideIcon 
+} from 'lucide-react'
+// standard utility for cleaner class merging (highly recommended)
+import { clsx, type ClassValue } from 'clsx' 
+import { twMerge } from 'tailwind-merge'
 
-// Extended interface to handle the optional agentStatus safely
+// Utility to merge tailwind classes safely
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+// ----------------------------------------------------------------------
+// Interfaces
+// ----------------------------------------------------------------------
+
 interface ExtendedDevice extends Device {
   agentStatus?: 'installed' | 'not_installed' | 'error' | string;
 }
@@ -24,7 +38,7 @@ interface DeviceCardProps {
 }
 
 // ----------------------------------------------------------------------
-// ActionButton - Internal reusable component for action buttons
+// Sub-Components
 // ----------------------------------------------------------------------
 
 interface ActionButtonProps {
@@ -33,8 +47,9 @@ interface ActionButtonProps {
   isActive?: boolean
   icon: LucideIcon
   label: string
-  activeColorClass?: string
-  hoverColorClass?: string
+  className?: string // Allow overriding base styles
+  activeClass?: string
+  hoverClass?: string
 }
 
 function ActionButton({
@@ -43,82 +58,69 @@ function ActionButton({
   isActive = false,
   icon: Icon,
   label,
-  activeColorClass = '',
-  hoverColorClass = ''
+  className,
+  activeClass,
+  hoverClass
 }: ActionButtonProps) {
-  // When this button is active (performing action), it should NOT be disabled
-  // When another action is processing, this button should be disabled
+  // Logic: Disabled if global disable is true, UNLESS this specific button is the active one
   const isDisabled = disabled && !isActive
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
-    if (!isDisabled && onClick) {
-      onClick()
-    }
+    if (!isDisabled && onClick) onClick()
   }
-
-  // Build button class string
-  const buttonClassName = `device-action-button group transition-colors${isActive ? ` ${activeColorClass}` : ''}${isDisabled ? ' opacity-50 cursor-default' : ''}`
-
-  // Build icon class string
-  const iconClassName = `text-gray-400 transition-colors${isActive ? ` ${activeColorClass}` : ` ${hoverColorClass}`}`
 
   return (
     <button
       type="button"
       onClick={handleClick}
       disabled={isDisabled}
-      className={buttonClassName}
       title={label}
       aria-label={label}
+      className={cn(
+        "group transition-colors p-2 rounded-md", // Base styles
+        isActive ? activeClass : "text-gray-400",
+        isDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-white/5",
+        className
+      )}
     >
-      <Icon size={16} className={iconClassName} />
+      <Icon 
+        size={16} 
+        className={cn(
+          "transition-colors",
+          isActive ? "text-current" : hoverClass
+        )} 
+      />
     </button>
   )
 }
 
-// ----------------------------------------------------------------------
-// InfoRow - Display label/value pairs
-// ----------------------------------------------------------------------
-
-interface InfoRowProps {
-  label: string
-  value?: string
-}
-
-function InfoRow({ label, value }: InfoRowProps) {
+function InfoRow({ label, value }: { label: string; value?: string }) {
   if (!value) return null
   return (
-    <div className="device-info-row">
-      <span className="device-info-label">{label}</span>
-      <span>{value}</span>
+    <div className="flex items-center text-xs gap-2">
+      <span className="text-gray-500 font-medium">{label}</span>
+      <span className="text-gray-300">{value}</span>
     </div>
   )
 }
 
-// ----------------------------------------------------------------------
-// ResourceBar - Display resource usage with progress bar
-// ----------------------------------------------------------------------
-
-interface ResourceBarProps {
-  label: string
-  value: number
-  icon: LucideIcon
-}
-
-function ResourceBar({ label, value, icon: Icon }: ResourceBarProps) {
+function ResourceBar({ label, value, icon: Icon }: { label: string; value: number; icon: LucideIcon }) {
+  // Color coding based on load
+  const loadColor = value > 90 ? 'bg-red-500' : value > 70 ? 'bg-yellow-500' : 'bg-green-500';
+  
   return (
-    <div>
-      <div className="device-stat-header">
-        <div className="flex-center gap-1">
-          <Icon size={14} className="text-muted" />
-          <span className="device-info-label">{label}</span>
+    <div className="w-full">
+      <div className="flex justify-between items-center mb-1">
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <Icon size={12} />
+          <span>{label}</span>
         </div>
-        <span className="entity-stat-value">{value}%</span>
+        <span className="text-xs font-mono">{value}%</span>
       </div>
-      <div className="device-stat-track">
+      <div className="h-1.5 w-full bg-gray-700/50 rounded-full overflow-hidden">
         <div
-          className="device-stat-bar"
+          className={cn("h-full transition-all duration-500 ease-out", loadColor)}
           style={{ width: `${value}%` }}
         />
       </div>
@@ -127,7 +129,7 @@ function ResourceBar({ label, value, icon: Icon }: ResourceBarProps) {
 }
 
 // ----------------------------------------------------------------------
-// DeviceCard - Main component
+// Main Component
 // ----------------------------------------------------------------------
 
 export default function DeviceCard({
@@ -147,7 +149,6 @@ export default function DeviceCard({
   const agentStatus = device.agentStatus || 'not_installed'
   const isOnline = device.status === 'Online'
 
-  // Determine if "Install Agent" button should be shown
   const showInstallAgent = useMemo(() => {
     return (
       (agentStatus === 'not_installed' || agentStatus === 'error') &&
@@ -156,45 +157,55 @@ export default function DeviceCard({
     )
   }, [agentStatus, isOnline, device.status])
 
-  // Determine if "Manual Install Command" button should be shown
   const showManualInstall = agentStatus === 'error' || agentStatus === 'not_installed'
 
-  // Status badge variant based on device status
   const statusVariant = useMemo(() => {
     switch (device.status) {
-      case 'Online':
-        return 'neonA'
-      case 'Degraded':
-        return 'warn'
-      case 'Offline':
-        return 'error'
-      default:
-        return 'default'
+      case 'Online': return 'neonA' // Assuming this maps to green/cyan
+      case 'Degraded': return 'warn'
+      case 'Offline': return 'error'
+      default: return 'default'
     }
   }, [device.status])
 
-  return (
-    <CardShell hover className="device-card-container">
-      <div className="device-card-header">
-        <div className="device-header-left">
-          <div className="device-header-row">
+  // Handle Date Hydration issues if using Next.js/SSR
+  const formattedCleanupTime = useMemo(() => {
+    if (!lastCleanupAt) return null;
+    return new Intl.DateTimeFormat('en-US', { 
+      hour: 'numeric', minute: 'numeric', second: 'numeric' 
+    }).format(lastCleanupAt);
+  }, [lastCleanupAt]);
 
-            {/* Title Section */}
-            <div className="device-title-row">
-              <Server size={20} className="text-neon-a icon-mr-2" />
-              <h3 className="entity-title">{device.name}</h3>
-              <StatusBadge status={device.role} variant="default" />
-              <StatusBadge status={device.status} variant={statusVariant} />
+  return (
+    <CardShell hover className="relative flex flex-col gap-4 p-4 border border-gray-800 bg-gray-900/50">
+      
+      {/* Header Row */}
+      <div className="flex justify-between items-start">
+        <div className="flex flex-col gap-3 w-full">
+          
+          {/* Title & Status */}
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gray-800 rounded-lg border border-gray-700">
+                <Server size={20} className="text-neon-a" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg leading-tight text-white">{device.name}</h3>
+                <div className="flex gap-2 mt-1">
+                  <StatusBadge status={device.role} variant="default" size="sm" />
+                  <StatusBadge status={device.status} variant={statusVariant} size="sm" />
+                </div>
+              </div>
             </div>
 
             {/* Actions Toolbar */}
-            <div className="device-actions-container flex gap-2">
+            <div className="flex gap-1">
               {showInstallAgent && (
                 <ActionButton
                   onClick={onInstallAgent}
                   disabled={isProcessing}
                   isActive={isProcessing && processType === 'install-agent'}
-                  activeColorClass="text-green-500"
+                  activeClass="text-green-400 bg-green-400/10"
                   icon={Download}
                   label="Auto Install Agent"
                 />
@@ -206,7 +217,7 @@ export default function DeviceCard({
                   disabled={isProcessing}
                   icon={Terminal}
                   label="Manual Install Command"
-                  hoverColorClass="group-hover:text-cyan-500"
+                  hoverClass="group-hover:text-cyan-400"
                 />
               )}
 
@@ -216,8 +227,8 @@ export default function DeviceCard({
                 isActive={isProcessing && processType === 'cleanup'}
                 icon={RefreshCw}
                 label="Cleanup Device"
-                activeColorClass="animate-spin text-neon-a"
-                hoverColorClass="group-hover:text-neon-a"
+                activeClass="animate-spin text-neon-a"
+                hoverClass="group-hover:text-neon-a"
               />
 
               <ActionButton
@@ -225,7 +236,7 @@ export default function DeviceCard({
                 disabled={isProcessing}
                 icon={Edit}
                 label="Edit Device"
-                hoverColorClass="group-hover:text-blue-500"
+                hoverClass="group-hover:text-blue-400"
               />
 
               <ActionButton
@@ -234,63 +245,73 @@ export default function DeviceCard({
                 isActive={isProcessing && processType === 'delete'}
                 icon={Trash2}
                 label="Delete Device"
-                activeColorClass="text-red-500"
-                hoverColorClass="group-hover:text-red-500"
+                activeClass="text-red-500 bg-red-500/10"
+                hoverClass="group-hover:text-red-500"
               />
             </div>
           </div>
 
-          {/* Device Meta Info */}
-          <div className="device-info-container">
-            <InfoRow label="IP:" value={device.ip} />
-            <div className="device-info-row">
-              <MapPin size={14} className="text-muted icon-mr-1" />
-              <span className="device-info-label">Location:</span>
-              <div className="flex items-center gap-2">
-                {device.flagCode && (
-                  <img
-                    src={`https://flagcdn.com/20x15/${device.flagCode}.png`}
-                    alt={`${device.location} flag`}
-                    className="device-flag-image"
-                  />
-                )}
-                <span>{device.location}</span>
+          <hr className="border-gray-800" />
+
+          {/* Device Meta Grid */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-2">
+              <InfoRow label="IP Address" value={device.ip} />
+              <div className="flex items-center text-xs gap-2">
+                 <span className="text-gray-500 font-medium">Location</span>
+                 <div className="flex items-center gap-2 text-gray-300">
+                    {device.flagCode ? (
+                      <img
+                        loading="lazy"
+                        src={`https://flagcdn.com/20x15/${device.flagCode}.png`}
+                        alt="" // Decorative, text is next to it
+                        className="w-5 h-[15px] object-cover rounded-sm shadow-sm"
+                      />
+                    ) : <MapPin size={14} />}
+                    <span>{device.location}</span>
+                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Resource Stats (Only if Online) */}
-          {isOnline && (
-            <div className="device-stats-container">
-              <ResourceBar label="CPU" value={device.cpu} icon={Cpu} />
-              <ResourceBar label="RAM" value={device.ram} icon={CircuitBoard} />
+            {/* Resources (Only if Online) */}
+            <div className="space-y-2">
+              {isOnline ? (
+                <>
+                  <ResourceBar label="CPU Usage" value={device.cpu} icon={Cpu} />
+                  <ResourceBar label="Memory" value={device.ram} icon={CircuitBoard} />
+                </>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-gray-600 italic border border-dashed border-gray-800 rounded">
+                  Metrics unavailable (Offline)
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Footer / Timestamps */}
-          <div className="device-last-action-container">
-            {device.lastAction && (
-              <div className="device-last-action">
-                <Activity size={14} className="text-muted icon-mr-2" />
-                <span>
-                  Last action: <span className="text-muted">{device.lastAction}</span> {device.lastActionTime}
-                </span>
-              </div>
-            )}
-
-            {lastCleanupAt && (
-              <div className="device-cleanup-time">
-                <RefreshCw size={10} className="mr-1" />
-                Last cleanup: {lastCleanupAt.toLocaleTimeString()}
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Progress Timeline */}
+      {/* Footer / Timestamps */}
+      {(device.lastAction || formattedCleanupTime) && (
+        <div className="flex justify-between items-center text-[10px] text-gray-500 pt-2 border-t border-gray-800/50">
+           {device.lastAction && (
+             <div className="flex items-center gap-1.5">
+                <Activity size={12} />
+                <span>Last: <span className="text-gray-400">{device.lastAction}</span> ({device.lastActionTime})</span>
+             </div>
+           )}
+           
+           {formattedCleanupTime && (
+             <div className="flex items-center gap-1.5 ml-auto">
+                <RefreshCw size={10} />
+                <span>Cleaned: {formattedCleanupTime}</span>
+             </div>
+           )}
+        </div>
+      )}
+
+      {/* Progress Timeline Overlay or Section */}
       {isProcessing && processSteps && (
-        <div className="device-process-container">
+        <div className="mt-2 pt-2 border-t border-gray-800">
           <VerticalProcessTimeline
             steps={processSteps}
             variant="horizontal"

@@ -32,25 +32,25 @@ type ChainConfigParams struct {
 	Protocol string
 	// Entry -> Relay
 	SegmentA struct {
-		EntryIP   string // Client IP for A (e.g. 10.10.0.2/32)
-		RelayIP   string // Server IP for A (e.g. 10.10.0.1/24) - WG Interface IP
-		RelayPort int    // Port Relay listens on for Entry
+		EntryIP       string // Client IP for A (e.g. 10.10.0.2/32)
+		RelayIP       string // Server IP for A (e.g. 10.10.0.1/24) - WG Interface IP
+		RelayPort     int    // Port Relay listens on for Entry
 		RelayPublicIP string
 	}
 	// Relay -> Exit
 	SegmentB struct {
-		RelayIP   string // Client IP for B (e.g. 10.10.1.2/32) - WG Interface IP
-		ExitIP    string // Server IP for B (e.g. 10.10.1.1/24) - WG Interface IP
-		ExitPort  int    // Port Exit listens on for Relay
+		RelayIP      string // Client IP for B (e.g. 10.10.1.2/32) - WG Interface IP
+		ExitIP       string // Server IP for B (e.g. 10.10.1.1/24) - WG Interface IP
+		ExitPort     int    // Port Exit listens on for Relay
 		ExitPublicIP string
 	}
 }
 
 type ChainConfigResult struct {
-	EntryConfig  string            `json:"entry_config"`
-	RelayConfig  string            `json:"relay_config"`
-	ExitConfig   string            `json:"exit_config"`
-	Metadata     map[string]string `json:"metadata"`
+	EntryConfig string            `json:"entry_config"`
+	RelayConfig string            `json:"relay_config"`
+	ExitConfig  string            `json:"exit_config"`
+	Metadata    map[string]string `json:"metadata"`
 }
 
 func (s *FactoryService) GenerateChainConfig(params ChainConfigParams) (*ChainConfigResult, error) {
@@ -85,16 +85,16 @@ DNS = 1.1.1.1
 PublicKey = %s
 Endpoint = %s:%d
 AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 25`, 
-		entryPriv, 
-		params.SegmentA.EntryIP, 
-		relayAPub, 
-		params.SegmentA.RelayPublicIP, 
+PersistentKeepalive = 25`,
+		entryPriv,
+		params.SegmentA.EntryIP,
+		relayAPub,
+		params.SegmentA.RelayPublicIP,
 		params.SegmentA.RelayPort)
 
 	// 2. Relay Config (Middleman)
 	// Interface A (Incoming from Entry) - wg0
-    relayConfigA := fmt.Sprintf(`[Interface]
+	relayConfigA := fmt.Sprintf(`[Interface]
 # Segment A (Listener)
 PrivateKey = %s
 ListenPort = %d
@@ -106,12 +106,12 @@ Table = off
 [Peer]
 # Entry Node
 PublicKey = %s
-AllowedIPs = %s`, 
-        relayAPriv, 
-        params.SegmentA.RelayPort, 
-        params.SegmentA.RelayIP, 
-        entryPub, 
-        params.SegmentA.EntryIP)
+AllowedIPs = %s`,
+		relayAPriv,
+		params.SegmentA.RelayPort,
+		params.SegmentA.RelayIP,
+		entryPub,
+		params.SegmentA.EntryIP)
 
 	// Interface B (Outgoing to Exit) - wg1
 	relayConfigB := fmt.Sprintf(`[Interface]
@@ -127,15 +127,15 @@ PostDown = ip rule del from %s table 200
 PublicKey = %s
 Endpoint = %s:%d
 AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 25`, 
-		relayBPriv, 
-		params.SegmentB.RelayIP, 
-		params.SegmentA.RelayIP, 
+PersistentKeepalive = 25`,
+		relayBPriv,
+		params.SegmentB.RelayIP,
 		params.SegmentA.RelayIP,
-		exitPub, 
-		params.SegmentB.ExitPublicIP, 
+		params.SegmentA.RelayIP,
+		exitPub,
+		params.SegmentB.ExitPublicIP,
 		params.SegmentB.ExitPort)
-		
+
 	relayConfig := relayConfigA + "\n\n---SPLIT---\n\n" + relayConfigB
 
 	// 3. Exit Config (Server)
@@ -150,11 +150,11 @@ PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING 
 [Peer]
 # Relay Node
 PublicKey = %s
-AllowedIPs = %s`, 
-		exitPriv, 
-		params.SegmentB.ExitPort, 
-		params.SegmentB.ExitIP, 
-		relayBPub, 
+AllowedIPs = %s`,
+		exitPriv,
+		params.SegmentB.ExitPort,
+		params.SegmentB.ExitIP,
+		relayBPub,
 		params.SegmentB.RelayIP)
 
 	return &ChainConfigResult{
@@ -162,10 +162,10 @@ AllowedIPs = %s`,
 		RelayConfig: relayConfig,
 		ExitConfig:  exitConfig,
 		Metadata: map[string]string{
-			"entry_pub": entryPub,
+			"entry_pub":   entryPub,
 			"relay_a_pub": relayAPub,
 			"relay_b_pub": relayBPub,
-			"exit_pub": exitPub,
+			"exit_pub":    exitPub,
 		},
 	}, nil
 }
@@ -181,7 +181,7 @@ func (s *FactoryService) GenerateConfig(params ConfigParams) (*ConfigResult, err
 	}
 
 	switch params.Protocol {
-	case "vless_reality":
+	case "vless", "vless_reality":
 		return s.generateVLESSReality(params)
 	case "wireguard":
 		return s.generateWireGuard(params)
@@ -202,7 +202,7 @@ func (s *FactoryService) generateVLESSReality(params ConfigParams) (*ConfigResul
 	}
 	shortId := keygen.GenerateShortId()
 	uuid := keygen.GenerateUUID()
-	
+
 	// 2. Construct Inbound
 	inbound := singbox.Inbound{
 		Type:       "vless",
@@ -265,7 +265,7 @@ func (s *FactoryService) generateWireGuard(params ConfigParams) (*ConfigResult, 
 
 	// Extract IP only for AllowedIPs
 	// 10.10.0.2/32 -> 10.10.0.2/32
-	
+
 	serverConfig := fmt.Sprintf(`[Interface]
 PrivateKey = %s
 ListenPort = %d
@@ -292,11 +292,11 @@ PersistentKeepalive = 25`, clientPriv, params.ClientIP, serverPub, params.Server
 		Inbound:      serverConfig,
 		ClientConfig: clientConfig,
 		Metadata: map[string]string{
-			"server_priv": serverPriv,
-			"server_pub":  serverPub,
-			"client_priv": clientPriv,
-			"client_pub":  clientPub,
-			"client_ip":   params.ClientIP,
+			"server_priv":  serverPriv,
+			"server_pub":   serverPub,
+			"client_priv":  clientPriv,
+			"client_pub":   clientPub,
+			"client_ip":    params.ClientIP,
 			"server_wg_ip": params.ServerWGIP,
 		},
 	}, nil
@@ -304,7 +304,7 @@ PersistentKeepalive = 25`, clientPriv, params.ClientIP, serverPub, params.Server
 
 func (s *FactoryService) generateHysteria2(params ConfigParams) (*ConfigResult, error) {
 	password := keygen.GenerateRandomPassword(16)
-	
+
 	inbound := singbox.Inbound{
 		Type:       "hysteria2",
 		Tag:        "hy2-in",
@@ -324,11 +324,11 @@ func (s *FactoryService) generateHysteria2(params ConfigParams) (*ConfigResult, 
 		UpMbps:   100,
 		DownMbps: 100,
 	}
-	
+
 	link := fmt.Sprintf("hysteria2://%s@%s:%d?sni=%s&alpn=h3&insecure=1#Netly-Hy2", password, params.ServerIP, params.Port, params.SNI)
-	
+
 	return &ConfigResult{
-		Inbound: inbound,
+		Inbound:      inbound,
 		ClientConfig: link,
 		Metadata: map[string]string{
 			"password": password,
@@ -369,7 +369,7 @@ func (s *FactoryService) generateTUIC(params ConfigParams) (*ConfigResult, error
 	link := fmt.Sprintf("tuic://%s:%s@%s:%d?sni=%s&alpn=h3&congestion_control=bbr#Netly-TUIC", uuid, password, params.ServerIP, params.Port, params.SNI)
 
 	return &ConfigResult{
-		Inbound: inbound,
+		Inbound:      inbound,
 		ClientConfig: link,
 		Metadata: map[string]string{
 			"uuid":     uuid,

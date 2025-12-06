@@ -88,3 +88,17 @@ type CreateServiceInput struct {
 	RoutingMode domain.RoutingMode
 	Config      domain.JSONB
 }
+
+// TaskService handles async tasks and command dispatch to agents
+type TaskService interface {
+	// Task management (existing)
+	CreateTask(taskType string) *domain.Task
+	UpdateTask(id string, status string, progress int, msg string) error
+	FailTask(id string, errStr string) error
+	GetTask(id string) (*domain.Task, error)
+
+	// Command dispatch (new)
+	CreateCommand(nodeID uint, cmdType domain.CommandType, payload domain.JSONB) (*domain.Command, error)
+	GetPendingCommands(nodeID uint) ([]*domain.Command, error)
+	UpdateCommandStatus(commandID string, status domain.CommandStatus, result string, errStr string) error
+}

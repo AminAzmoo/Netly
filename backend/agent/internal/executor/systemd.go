@@ -87,7 +87,7 @@ func (s *SystemdManager) IsActive(serviceName string) (bool, error) {
 		return false, err
 	}
 
-	cmd := exec.Command("systemctl", "is-active", "--quiet", serviceName)
+	cmd := exec.Command("sudo", "systemctl", "is-active", "--quiet", serviceName)
 	err := cmd.Run()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -106,7 +106,7 @@ func (s *SystemdManager) IsEnabled(serviceName string) (bool, error) {
 		return false, err
 	}
 
-	cmd := exec.Command("systemctl", "is-enabled", "--quiet", serviceName)
+	cmd := exec.Command("sudo", "systemctl", "is-enabled", "--quiet", serviceName)
 	err := cmd.Run()
 	return err == nil, nil
 }
@@ -120,7 +120,7 @@ func (s *SystemdManager) Status(serviceName string) (string, error) {
 		return "", err
 	}
 
-	cmd := exec.Command("systemctl", "status", serviceName)
+	cmd := exec.Command("sudo", "systemctl", "status", serviceName)
 	output, _ := cmd.CombinedOutput()
 	return string(output), nil
 }
@@ -128,9 +128,9 @@ func (s *SystemdManager) Status(serviceName string) (string, error) {
 func (s *SystemdManager) runSystemctl(action, serviceName string) error {
 	var cmd *exec.Cmd
 	if serviceName == "" {
-		cmd = exec.Command("systemctl", action)
+		cmd = exec.Command("sudo", "systemctl", action)
 	} else {
-		cmd = exec.Command("systemctl", action, serviceName)
+		cmd = exec.Command("sudo", "systemctl", action, serviceName)
 	}
 
 	output, err := cmd.CombinedOutput()
