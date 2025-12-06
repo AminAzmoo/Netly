@@ -7,11 +7,12 @@ import (
 )
 
 type NetworkHandler struct {
-	tunnelRepo  ports.TunnelRepository
-	serviceRepo ports.ServiceRepository
-	nodeRepo    ports.NodeRepository
-	logger      *logger.Logger
-	ipamConfig  IPAMConfigInfo
+	tunnelRepo   ports.TunnelRepository
+	serviceRepo  ports.ServiceRepository
+	nodeRepo     ports.NodeRepository
+	fqdnamSvc    ports.FQDNAMService
+	logger       *logger.Logger
+	ipamConfig   IPAMConfigInfo
 	portamConfig PortAMConfigInfo
 }
 
@@ -29,6 +30,7 @@ type NetworkHandlerConfig struct {
 	TunnelRepo   ports.TunnelRepository
 	ServiceRepo  ports.ServiceRepository
 	NodeRepo     ports.NodeRepository
+	FQDNAMSvc    ports.FQDNAMService
 	Logger       *logger.Logger
 	IPAMConfig   IPAMConfigInfo
 	PortAMConfig PortAMConfigInfo
@@ -39,6 +41,7 @@ func NewNetworkHandler(cfg NetworkHandlerConfig) *NetworkHandler {
 		tunnelRepo:   cfg.TunnelRepo,
 		serviceRepo:  cfg.ServiceRepo,
 		nodeRepo:     cfg.NodeRepo,
+		fqdnamSvc:    cfg.FQDNAMSvc,
 		logger:       cfg.Logger,
 		ipamConfig:   cfg.IPAMConfig,
 		portamConfig: cfg.PortAMConfig,
@@ -136,12 +139,33 @@ func (h *NetworkHandler) GetNetworkStats(c *fiber.Ctx) error {
 	totalPortRange := h.portamConfig.MaxPort - h.portamConfig.MinPort
 	usedPorts := len(portAllocations)
 
+	// Build FQDN allocations
+	fqdnAllocations := make([]fiber.Map, 0)
+	baseDomain := "local.netly"
+	
+	if h.fqdnamSvc != nil {
+		baseDomain = h.fqdnamSvc.GetBaseDomain(ctx)
+		if allocs, err := h.fqdnamSvc.GetAllocations(ctx); err == nil {
+			for _, a := range allocs {
+				fqdnAllocations = append(fqdnAllocations, fiber.Map{
+					"fqdn":         a.FQDN,
+					"service_id":   a.ServiceID,
+					"service_name": a.ServiceName,
+					"node_id":      a.NodeID,
+					"protocol":     a.Protocol,
+					"port":         a.Port,
+					"created_at":   a.CreatedAt,
+				})
+			}
+		}
+	}
+
 	return c.JSON(fiber.Map{
 		"ipam": fiber.Map{
-			"ipv4_cidr":        h.ipamConfig.IPv4CIDR,
-			"ipv6_cidr":        h.ipamConfig.IPv6CIDR,
-			"allocated_count":  len(ipAllocations),
-			"allocations":      ipAllocations,
+			"ipv4_cidr":       h.ipamConfig.IPv4CIDR,
+			"ipv6_cidr":       h.ipamConfig.IPv6CIDR,
+			"allocated_count": len(ipAllocations),
+			"allocations":     ipAllocations,
 		},
 		"portam": fiber.Map{
 			"min_port":        h.portamConfig.MinPort,
@@ -150,6 +174,11 @@ func (h *NetworkHandler) GetNetworkStats(c *fiber.Ctx) error {
 			"used_count":      usedPorts,
 			"available_count": totalPortRange - usedPorts,
 			"allocations":     portAllocations,
+		},
+		"fqdnam": fiber.Map{
+			"base_domain":     baseDomain,
+			"allocated_count": len(fqdnAllocations),
+			"allocations":     fqdnAllocations,
 		},
 		"summary": fiber.Map{
 			"total_nodes":    len(nodes),

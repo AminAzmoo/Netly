@@ -156,10 +156,10 @@ func (s *fqdnamService) GetBaseDomain(ctx context.Context) string {
 }
 
 // SetBaseDomain updates the base domain setting
-func (s *fqdnamService) SetBaseDomain(ctx context.Context, domain string) error {
+func (s *fqdnamService) SetBaseDomain(ctx context.Context, baseDomain string) error {
 	setting := &domain.SystemSetting{
 		Key:      "fqdn_base_domain",
-		Value:    domain,
+		Value:    baseDomain,
 		Type:     "string",
 		Category: "network",
 	}

@@ -61,6 +61,14 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 		Config:      portamConfig,
 	})
 
+	// Initialize FQDNAM service
+	fqdnamService := services.NewFQDNAMService(services.FQDNAMServiceConfig{
+		ServiceRepo: serviceRepo,
+		SettingRepo: settingRepo,
+		Logger:      cfg.Logger,
+		BaseDomain:  "", // Will use setting or default
+	})
+
 	// Initialize services
 	keyManager := services.NewKeyManager(settingService, cfg.Logger)
 	if err := keyManager.Initialize(); err != nil {
@@ -199,11 +207,12 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 	timeline := api.Group("/timeline", httpmw.AdminAuth(cfg.Config))
 	timeline.Get("/", timelineHandler.GetEvents)
 
-	// Network Resources routes (IPAM/PortAM)
+	// Network Resources routes (IPAM/PortAM/FQDNAM)
 	networkHandler := handlers.NewNetworkHandler(handlers.NetworkHandlerConfig{
 		TunnelRepo:  tunnelRepo,
 		ServiceRepo: serviceRepo,
 		NodeRepo:    nodeRepo,
+		FQDNAMSvc:   fqdnamService,
 		Logger:      cfg.Logger,
 		IPAMConfig: handlers.IPAMConfigInfo{
 			IPv4CIDR: ipamConfig.IPv4CIDR,
