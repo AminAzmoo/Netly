@@ -101,6 +101,7 @@ func SetupRoutes(app *fiber.App, cfg RouterConfig) ports.InstallerService {
 		ServiceRepo: serviceRepo,
 		NodeRepo:    nodeRepo,
 		TunnelRepo:  tunnelRepo,
+		FQDNAMSvc:   fqdnamService,
 		Logger:      cfg.Logger,
 		EnableLocks: cfg.EnableLocks,
 	})

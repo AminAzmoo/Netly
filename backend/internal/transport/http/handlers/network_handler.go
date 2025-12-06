@@ -50,7 +50,7 @@ func NewNetworkHandler(cfg NetworkHandlerConfig) *NetworkHandler {
 
 // GetNetworkStats returns IPAM and PortAM statistics
 func (h *NetworkHandler) GetNetworkStats(c *fiber.Ctx) error {
-	ctx := c.Context()
+	ctx := c.UserContext()
 
 	// Get all tunnels for IP allocation info
 	tunnels, err := h.tunnelRepo.GetAll(ctx)

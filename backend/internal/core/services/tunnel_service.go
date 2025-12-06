@@ -154,6 +154,15 @@ func (s *tunnelService) CreateTunnel(ctx context.Context, input ports.CreateTunn
 		return nil, err
 	}
 
+	// DEBUG: Log allocated IPs
+	s.logger.Infow("wireguard_ip_allocation",
+		"subnet", ipv4Subnet,
+		"server_ip", serverWGIP,
+		"client_ip", clientWGIP,
+		"dest_node_id", input.DestNodeID,
+		"source_node_id", input.SourceNodeID,
+	)
+
 	// Generate Protocol Configuration
 	configParams := factory.ConfigParams{
 		Protocol:   string(input.Protocol),

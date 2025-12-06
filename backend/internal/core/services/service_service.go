@@ -15,27 +15,30 @@ type ServiceServiceConfig struct {
     ServiceRepo ports.ServiceRepository
     NodeRepo    ports.NodeRepository
     TunnelRepo  ports.TunnelRepository
+    FQDNAMSvc   ports.FQDNAMService
     Logger      *logger.Logger
     EnableLocks bool
 }
 
 type serviceService struct {
-    repo       ports.ServiceRepository
-    nodeRepo   ports.NodeRepository
-    tunnelRepo ports.TunnelRepository
-    logger     *logger.Logger
-    mu         sync.Mutex
-    locks      map[string]*sync.Mutex
+    repo        ports.ServiceRepository
+    nodeRepo    ports.NodeRepository
+    tunnelRepo  ports.TunnelRepository
+    fqdnamSvc   ports.FQDNAMService
+    logger      *logger.Logger
+    mu          sync.Mutex
+    locks       map[string]*sync.Mutex
     enableLocks bool
 }
 
 func NewServiceService(cfg ServiceServiceConfig) ports.ServiceService {
     return &serviceService{
-        repo:       cfg.ServiceRepo,
-        nodeRepo:   cfg.NodeRepo,
-        tunnelRepo: cfg.TunnelRepo,
-        logger:     cfg.Logger,
-        locks:      make(map[string]*sync.Mutex),
+        repo:        cfg.ServiceRepo,
+        nodeRepo:    cfg.NodeRepo,
+        tunnelRepo:  cfg.TunnelRepo,
+        fqdnamSvc:   cfg.FQDNAMSvc,
+        logger:      cfg.Logger,
+        locks:       make(map[string]*sync.Mutex),
         enableLocks: cfg.EnableLocks,
     }
 }
@@ -75,27 +78,45 @@ func (s *serviceService) CreateService(ctx context.Context, input ports.CreateSe
         fmt.Sprintf("service:%s:%d", input.Name, input.NodeID),
     )
     defer unlock()
+    
     // Validate Node exists
     if _, err := s.nodeRepo.GetByID(ctx, input.NodeID); err != nil {
         s.logger.Error("Node not found", map[string]interface{}{"node_id": input.NodeID, "error": err.Error()})
         return nil, err
     }
 
-	service := &domain.Service{
-		Name:        input.Name,
-		Protocol:    input.Protocol,
-		NodeID:      input.NodeID,
-		ListenPort:  input.ListenPort,
-		RoutingMode: input.RoutingMode,
-		Config:      input.Config,
-	}
+    // Initialize config if nil
+    config := input.Config
+    if config == nil {
+        config = make(domain.JSONB)
+    }
 
-	if err := s.repo.Create(ctx, service); err != nil {
-		s.logger.Error("Failed to create service", map[string]interface{}{"error": err.Error()})
-		return nil, err
-	}
+    // Auto-allocate FQDN if FQDNAM service is available
+    if s.fqdnamSvc != nil {
+        fqdn, err := s.fqdnamSvc.AllocateFQDN(ctx, input.Name, input.NodeID)
+        if err != nil {
+            s.logger.Warnw("Failed to allocate FQDN", "error", err, "service_name", input.Name)
+        } else {
+            config["fqdn"] = fqdn
+            s.logger.Infow("FQDN allocated for service", "fqdn", fqdn, "service_name", input.Name)
+        }
+    }
 
-	return service, nil
+    service := &domain.Service{
+        Name:        input.Name,
+        Protocol:    input.Protocol,
+        NodeID:      input.NodeID,
+        ListenPort:  input.ListenPort,
+        RoutingMode: input.RoutingMode,
+        Config:      config,
+    }
+
+    if err := s.repo.Create(ctx, service); err != nil {
+        s.logger.Error("Failed to create service", map[string]interface{}{"error": err.Error()})
+        return nil, err
+    }
+
+    return service, nil
 }
 
 func (s *serviceService) GetServices(ctx context.Context) ([]domain.Service, error) {
