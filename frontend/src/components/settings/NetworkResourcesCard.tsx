@@ -171,6 +171,55 @@ export default function NetworkResourcesCard() {
           </div>
         )}
       </div>
+
+      {/* FQDNAM Section */}
+      {data.fqdnam && (
+        <div className="mt-6">
+          <h4 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+            <Link size={14} />
+            FQDN Manager (FQDNAM)
+          </h4>
+          <div className="bg-gray-800/30 rounded-lg p-3 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Base Domain</span>
+              <span className="text-white font-mono">{data.fqdnam.base_domain}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-400">Allocated FQDNs</span>
+              <span className="text-green-400 font-semibold">{data.fqdnam.allocated_count}</span>
+            </div>
+          </div>
+
+          {data.fqdnam.allocations.length > 0 && (
+            <div className="mt-3 max-h-40 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="text-gray-500 sticky top-0 bg-gray-900">
+                  <tr>
+                    <th className="text-left py-1">FQDN</th>
+                    <th className="text-left py-1">Service</th>
+                    <th className="text-left py-1">Port</th>
+                  </tr>
+                </thead>
+                <tbody className="text-gray-300">
+                  {data.fqdnam.allocations.map((alloc, i) => (
+                    <tr key={i} className="border-t border-gray-700/50">
+                      <td className="py-1 font-mono text-cyan-400">{alloc.fqdn}</td>
+                      <td className="py-1">{alloc.service_name}</td>
+                      <td className="py-1 font-mono">{alloc.port}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {data.fqdnam.allocations.length === 0 && (
+            <p className="text-xs text-gray-500 mt-2">
+              No FQDNs allocated yet. FQDNs are auto-generated when services are created.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
