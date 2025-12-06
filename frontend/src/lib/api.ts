@@ -179,7 +179,7 @@ class ApiClient {
     })
   }
 
-  // Network Resources (IPAM/PortAM)
+  // Network Resources (IPAM/PortAM/FQDNAM)
   async getNetworkStats() {
     return this.request<{
       ipam: {
@@ -209,6 +209,19 @@ class ApiClient {
           type: string
           resource_id: number
           resource_name: string
+        }>
+      }
+      fqdnam: {
+        base_domain: string
+        allocated_count: number
+        allocations: Array<{
+          fqdn: string
+          service_id: number
+          service_name: string
+          node_id: number
+          protocol: string
+          port: number
+          created_at: string
         }>
       }
       summary: {
