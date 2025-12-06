@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Network, Server, Activity, Globe, Hash } from 'lucide-react'
+import { Network, Server, Activity, Globe, Hash, Link } from 'lucide-react'
 import { api } from '../../lib/api'
 
 export default function NetworkResourcesCard() {
