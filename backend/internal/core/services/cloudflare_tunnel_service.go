@@ -36,7 +36,7 @@ func (s *CloudflareTunnelService) installCloudflared() error {
 
 	s.logger.Info("Installing cloudflared...")
 	
-	cmd := exec.Command("bash", "-c", "curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared && chmod +x /usr/local/bin/cloudflared")
+	cmd := exec.Command("bash", "-c", "sudo curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared && sudo chmod +x /usr/local/bin/cloudflared")
 	if err := cmd.Run(); err != nil {
 		return err
 	}

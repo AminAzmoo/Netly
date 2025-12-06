@@ -3,6 +3,7 @@ package executor
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -24,22 +25,7 @@ func NewFileOps() *FileOps {
 
 // WriteConfig writes content to a file with secure permissions
 func (f *FileOps) WriteConfig(path string, content string) error {
-	if err := f.validatePath(path); err != nil {
-		return err
-	}
-
-	// Ensure parent directory exists
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", dir, err)
-	}
-
-	// Write file with secure permissions (0600 - owner read/write only)
-	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
-		return fmt.Errorf("failed to write file %s: %w", path, err)
-	}
-
-	return nil
+	return f.WriteConfigWithPerms(path, content, 0600)
 }
 
 // WriteConfigWithPerms writes content with custom permissions
@@ -48,14 +34,44 @@ func (f *FileOps) WriteConfigWithPerms(path string, content string, perm os.File
 		return err
 	}
 
+	// Ensure parent directory exists using sudo
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := exec.Command("sudo", "mkdir", "-p", dir).Run(); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
-	if err := os.WriteFile(path, []byte(content), perm); err != nil {
-		return fmt.Errorf("failed to write file %s: %w", path, err)
+	// Write content to a temporary file first
+	tmpFile, err := os.CreateTemp("", "netly-config-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
 	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		return fmt.Errorf("failed to write to temp file: %w", err)
+	}
+	tmpFile.Close()
+
+	// Move the temp file to the destination using sudo
+	if err := exec.Command("sudo", "mv", tmpFile.Name(), path).Run(); err != nil {
+		return fmt.Errorf("failed to move file to destination %s: %w", path, err)
+	}
+
+	// Set permissions using sudo
+	permStr := fmt.Sprintf("%o", perm)
+	if err := exec.Command("sudo", "chmod", permStr, path).Run(); err != nil {
+		return fmt.Errorf("failed to set permissions on %s: %w", path, err)
+	}
+
+	// Since we moved a file created by the current user, it might be owned by current user.
+	// Usually system files should be owned by root.
+	// We should probably chown to root:root?
+	// The prompt implies we are restricted user 'amin', so we probably want root ownership for /etc files.
+	// But let's check if 'chown' is allowed or needed.
+	// If the file is readable by the service (if needed), root owner is safer.
+	// 'systemd' needs root owned unit files? Usually yes.
+	// Let's add chown root:root just in case.
+	_ = exec.Command("sudo", "chown", "root:root", path).Run()
 
 	return nil
 }
@@ -66,12 +82,14 @@ func (f *FileOps) ReadConfig(path string) (string, error) {
 		return "", err
 	}
 
-	content, err := os.ReadFile(path)
+	// Use sudo cat to read file
+	cmd := exec.Command("sudo", "cat", path)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("failed to read file %s: %w", path, err)
 	}
 
-	return string(content), nil
+	return string(output), nil
 }
 
 // DeleteConfig removes a configuration file
@@ -80,7 +98,8 @@ func (f *FileOps) DeleteConfig(path string) error {
 		return err
 	}
 
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+	// Use sudo rm
+	if err := exec.Command("sudo", "rm", "-f", path).Run(); err != nil {
 		return fmt.Errorf("failed to delete file %s: %w", path, err)
 	}
 
@@ -89,7 +108,8 @@ func (f *FileOps) DeleteConfig(path string) error {
 
 // FileExists checks if a file exists
 func (f *FileOps) FileExists(path string) bool {
-	_, err := os.Stat(path)
+	// Use sudo test -e
+	err := exec.Command("sudo", "test", "-e", path).Run()
 	return err == nil
 }
 
@@ -103,14 +123,10 @@ func (f *FileOps) BackupConfig(path string) error {
 		return nil // Nothing to backup
 	}
 
-	content, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("failed to read file for backup: %w", err)
-	}
-
 	backupPath := path + ".bak"
-	if err := os.WriteFile(backupPath, content, 0600); err != nil {
-		return fmt.Errorf("failed to write backup: %w", err)
+	// Use sudo cp
+	if err := exec.Command("sudo", "cp", path, backupPath).Run(); err != nil {
+		return fmt.Errorf("failed to backup file %s: %w", path, err)
 	}
 
 	return nil

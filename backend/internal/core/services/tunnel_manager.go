@@ -48,7 +48,7 @@ func (tm *TunnelManager) StartTunnel(token string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	tm.cancel = cancel
 
-	tm.cmd = exec.CommandContext(ctx, "cloudflared", "tunnel", "run", "--token", token)
+	tm.cmd = exec.CommandContext(ctx, "sudo", "cloudflared", "tunnel", "run", "--token", token)
 	
 	stdout, err := tm.cmd.StdoutPipe()
 	if err != nil {
@@ -97,7 +97,7 @@ func (tm *TunnelManager) StartTunnelWithURL(token, fixedURL string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	tm.cancel = cancel
 
-	tm.cmd = exec.CommandContext(ctx, "cloudflared", "tunnel", "run", "--token", token)
+	tm.cmd = exec.CommandContext(ctx, "sudo", "cloudflared", "tunnel", "run", "--token", token)
 	
 	stdout, err := tm.cmd.StdoutPipe()
 	if err != nil {
