@@ -1,6 +1,7 @@
 import PageShell from '../components/layout/PageShell'
 import GeneralSettingsCard from '../components/settings/GeneralSettingsCard'
 import NetworkSettingsCard from '../components/settings/NetworkSettingsCard'
+import NetworkResourcesCard from '../components/settings/NetworkResourcesCard'
 import IntegrationsCard from '../components/settings/IntegrationsCard'
 import SystemCard from '../components/settings/SystemCard'
 
@@ -13,6 +14,7 @@ export default function SettingsPage() {
       <div className="settings-page-content">
         <GeneralSettingsCard />
         <NetworkSettingsCard />
+        <NetworkResourcesCard />
         <IntegrationsCard />
         <SystemCard />
         

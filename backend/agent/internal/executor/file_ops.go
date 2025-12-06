@@ -65,9 +65,15 @@ func (f *FileOps) WriteConfigWithPerms(path string, content string, perm os.File
 
 	// Since we moved a file created by the current user, it might be owned by current user.
 	// Usually system files should be owned by root.
+<<<<<<< HEAD
 	// We should probably chown to root:root? 
 	// The prompt implies we are restricted user 'amin', so we probably want root ownership for /etc files.
 	// But let's check if 'chown' is allowed or needed. 
+=======
+	// We should probably chown to root:root?
+	// The prompt implies we are restricted user 'amin', so we probably want root ownership for /etc files.
+	// But let's check if 'chown' is allowed or needed.
+>>>>>>> 4fdbfb934651dda52648026c4d1efc336b1e46c1
 	// If the file is readable by the service (if needed), root owner is safer.
 	// 'systemd' needs root owned unit files? Usually yes.
 	// Let's add chown root:root just in case.
