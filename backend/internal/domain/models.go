@@ -254,3 +254,14 @@ func (PortAllocation) TableName() string {
 func (IPAllocation) TableName() string {
 	return "ip_allocations"
 }
+
+// FQDNAllocation represents an FQDN allocation for a service
+type FQDNAllocation struct {
+	FQDN        string    `json:"fqdn"`
+	ServiceID   uint      `json:"service_id"`
+	ServiceName string    `json:"service_name"`
+	NodeID      uint      `json:"node_id"`
+	Protocol    string    `json:"protocol"`
+	Port        int       `json:"port"`
+	CreatedAt   time.Time `json:"created_at"`
+}

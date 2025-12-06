@@ -89,6 +89,15 @@ type CreateServiceInput struct {
 	Config      domain.JSONB
 }
 
+// FQDNAMService manages FQDN allocations for services
+type FQDNAMService interface {
+	AllocateFQDN(ctx context.Context, serviceName string, nodeID uint) (string, error)
+	ReleaseFQDN(ctx context.Context, fqdn string) error
+	GetAllocations(ctx context.Context) ([]domain.FQDNAllocation, error)
+	ValidateFQDN(ctx context.Context, fqdn string) (bool, error)
+	GetBaseDomain(ctx context.Context) string
+}
+
 // TaskService handles async tasks and command dispatch to agents
 type TaskService interface {
 	// Task management (existing)
