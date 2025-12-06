@@ -32,8 +32,7 @@ func (e *Executor) Execute(command string) (*CommandResult, error) {
 
 	start := time.Now()
 
-	// Use sudo for all commands executed by the agent
-	cmd := exec.CommandContext(ctx, "sudo", "sh", "-c", command)
+	cmd := exec.CommandContext(ctx, "sh", "-c", command)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -79,8 +78,7 @@ func (e *Executor) ExecuteScript(script string, interpreter string) (*CommandRes
 
 	start := time.Now()
 
-	// Use sudo for all scripts
-	cmd := exec.CommandContext(ctx, "sudo", interpreter)
+	cmd := exec.CommandContext(ctx, interpreter)
 	cmd.Stdin = bytes.NewBufferString(script)
 
 	var stdout, stderr bytes.Buffer
